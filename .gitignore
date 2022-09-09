@@ -1,0 +1,17 @@
+/build
+*.class
+/bin/
+.settings
+settings.xml
+target/
+target/*
+*.venv
+*/venv
+*__pycache__*
+.classpath
+.project
+*.sublime-workspace
+.idea
+pom-test.xml
+rc/*log4j2.properties
+logs
