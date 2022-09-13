@@ -1,10 +1,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<packaging>jar</packaging>
-	<groupId>com.geosiris</groupId>
-	<artifactId>energyml-utils</artifactId>
+    <modelVersion>4.0.0</modelVersion>
+    <packaging>jar</packaging>
+    <groupId>com.geosiris</groupId>
+    <artifactId>energyml-utils</artifactId>
     <name>${project.groupId}:${project.artifactId}</name>
-	<version>1.0.1</version>
+    <version>1.0.1</version>
     <organization>
         <name>Geosiris</name>
         <url>http://www.geosiris.com</url>
@@ -42,42 +42,43 @@
         <java.version>11</java.version>
         <src.dir>${project.basedir}/src/main/java</src.dir>
         <rc.dir>${project.basedir}/rc/main/resources</rc.dir>
+        <test.dir>${project.basedir}/rc/main/test</test.dir>
         <sonar.organization>geosiris-technologies</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
-	<dependencies>
-		<dependency>
-			<groupId>com.geosiris</groupId>
-			<artifactId>energyml-opc</artifactId>
-			<version>1.0.0</version>
-		</dependency>
-		<dependency>
-			<groupId>jakarta.xml.bind</groupId>
-			<artifactId>jakarta.xml.bind-api</artifactId>
-			<version>4.0.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.sun.xml.bind</groupId>
-			<artifactId>jaxb-impl</artifactId>
-			<version>4.0.0</version>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.google.code.gson</groupId>
-			<artifactId>gson</artifactId>
-			<version>2.9.0</version>
-		</dependency>
-		<!-- LOGS -->
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-api</artifactId>
-			<version>2.18.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-core</artifactId>
-			<version>2.18.0</version>
-		</dependency>
+    <dependencies>
+        <dependency>
+            <groupId>com.geosiris</groupId>
+            <artifactId>energyml-opc</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.bind</groupId>
+            <artifactId>jaxb-impl</artifactId>
+            <version>4.0.0</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.9.0</version>
+        </dependency>
+        <!-- LOGS -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.18.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.18.0</version>
+        </dependency>
         <!-- Tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -85,23 +86,23 @@
             <version>5.8.2</version>
             <scope>test</scope>
         </dependency>
-		<dependency>
-			<groupId>com.geosiris</groupId>
-			<artifactId>energyml-resqml22</artifactId>
-			<version>1.0.0</version>
+        <dependency>
+            <groupId>com.geosiris</groupId>
+            <artifactId>energyml-resqml22</artifactId>
+            <version>1.0.0</version>
             <scope>test</scope>
-		</dependency>
-	</dependencies>
-	<build>
-		<sourceDirectory>${src.dir}</sourceDirectory>
-        <testSourceDirectory>src/main/test</testSourceDirectory>
-		<resources>
-			<resource>
-				<directory>${rc.dir}</directory>
-			</resource>
-		</resources>
-		<plugins>
-			<!-- Maven central publish -->
+        </dependency>
+    </dependencies>
+    <build>
+        <sourceDirectory>${src.dir}</sourceDirectory>
+        <testSourceDirectory>${test.dir}</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>${rc.dir}</directory>
+            </resource>
+        </resources>
+        <plugins>
+            <!-- Maven central publish -->
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
@@ -142,15 +143,10 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Tests -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
-            </plugin>
-		</plugins>
-	</build>
-	<distributionManagement>
+
+        </plugins>
+    </build>
+    <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>
             <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
@@ -194,6 +190,19 @@
                             <doclint>none</doclint>
                             <!-- to avoid generation fail if javadoc errors in java files -->
                         </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>test</id>
+            <build>
+                <plugins>
+                    <!-- Tests -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>2.22.2</version>
                     </plugin>
                 </plugins>
             </build>
