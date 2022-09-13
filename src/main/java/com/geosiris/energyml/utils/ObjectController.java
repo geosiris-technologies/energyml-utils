@@ -619,7 +619,6 @@ public class ObjectController {
                     result = obj.getClass().getMethod("get", Object.class).invoke(obj, attribute);
                 } catch (Exception emap) {
                     logger.debug(emap.getMessage(), emap);
-                    emap.printStackTrace();
                 }
             }
         }
