@@ -612,7 +612,7 @@ public class EPCPackageManager {
         if(match.find()){
             schemaVersion = match.group("versionNum").replace("_", ".");
         }
-        Matcher matchEtpVersion = Pattern.compile("(?<digit2Version>[\\d]+(\\.[\\d]+)?)(\\.[\\d]+)*").matcher(schemaVersion);
+        Matcher matchEtpVersion = Utils.PATTERN_MATCH_ETP_VERSION.matcher(schemaVersion);
         if(matchEtpVersion.find()){
             schemaVersion = matchEtpVersion.group("digit2Version");
         }

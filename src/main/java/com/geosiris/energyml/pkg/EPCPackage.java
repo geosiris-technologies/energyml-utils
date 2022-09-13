@@ -126,7 +126,7 @@ public abstract class EPCPackage {
         if(version.length()>2){
             version = new StringBuilder(version.substring(0, 2));
         }
-        return  this.name + version + "." + getObjectTypeForFilePath(obj);
+        return this.name + version + "." + getObjectTypeForFilePath(obj);
     }
 
     abstract public List<Class<?>> getRootsElementsClasses();
@@ -163,7 +163,7 @@ public abstract class EPCPackage {
         if (schemaVersion.startsWith("2.0") && objType.startsWith("Obj")) {
             objType = objType.replace("Obj", "obj_");
         }
-        objType = objType.replaceAll("([0-9]+)D", "$1d");
+        objType = objType.replaceAll("(\\d+)D", "$1d");
         return objType;
     }
 

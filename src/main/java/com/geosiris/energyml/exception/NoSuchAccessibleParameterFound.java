@@ -16,8 +16,8 @@ limitations under the License.
 package com.geosiris.energyml.exception;
 
 public class NoSuchAccessibleParameterFound extends Exception {
-    private String parameterPath;
-    private Object rootObject;
+    private final String parameterPath;
+    private final Object rootObject;
 
     public NoSuchAccessibleParameterFound(String parameterPath, Object rootObject) {
         super();

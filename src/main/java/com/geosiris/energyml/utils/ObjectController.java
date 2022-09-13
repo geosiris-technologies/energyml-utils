@@ -546,7 +546,8 @@ public class ObjectController {
             return long.class;
         } else if (initialClass.getSimpleName().toLowerCase().compareTo("double") == 0) {
             return double.class;
-        } else if (initialClass.getSimpleName().toLowerCase().compareTo("int") == 0) {
+        } else if (initialClass.getSimpleName().toLowerCase().compareTo("int") == 0
+                || initialClass.getSimpleName().toLowerCase().compareTo("integer") == 0) {
             return int.class;
         } else if (initialClass.getSimpleName().toLowerCase().compareTo("float") == 0) {
             return float.class;
@@ -596,7 +597,7 @@ public class ObjectController {
 
         Object result = null;
         // Cas des indices de liste
-        if (attribute.replaceAll("[0-9]+", "").length() == 0) {
+        if (attribute.replaceAll("[\\d]+", "").length() == 0) {
             try {
                 result = obj.getClass().getMethod("get", int.class).invoke(obj, Integer.parseInt(attribute));
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
@@ -610,10 +611,16 @@ public class ObjectController {
             // Si pas un entier on a une exception donc ce n'est pas une liste
             try {
                 result = getAttributeAccessMethod(obj, attribute).invoke(obj);
-                //				result = obj.getClass().getMethod("get"+(""+attribute.charAt(0)).toUpperCase()+attribute.substring(1)).invoke(obj);
             } catch (Exception e) {
                 logger.debug(e.getMessage(), e);
                 logger.debug("obj was " + obj + " path was '" + pathAttribute + "' and attribute " + " '" + attribute + "'");
+                logger.debug("Now we try to get the attribute as a map key");
+                try {
+                    result = obj.getClass().getMethod("get", Object.class).invoke(obj, attribute);
+                } catch (Exception emap) {
+                    logger.debug(emap.getMessage(), emap);
+                    emap.printStackTrace();
+                }
             }
         }
 

@@ -52,10 +52,11 @@ import java.util.zip.ZipOutputStream;
 
 public class Utils {
 	public static Logger logger = LogManager.getLogger(Utils.class);
-	private static final Pattern patternSchema = Pattern.compile("energyml\\.(?<pkgId>(?<pkgName>[a-zA-Z\\d]+)(?<devVersion>_dev[\\d]+[a-zA-Z]+_)?(?<pkgVersion>[\\d]+([\\._][0-9]+)+))\\.(?<className>[\\w\\d]+)");
+	public static final Pattern PATTERN_SCHEMA = Pattern.compile("energyml\\.(?<pkgId>(?<pkgName>[a-zA-Z\\d]+)(?<devVersion>_dev[\\d]+[a-zA-Z]+_)?(?<pkgVersion>[\\d]+([\\._][0-9]+)+))\\.(?<className>[\\w\\d]+)$");
 	public final static Pattern PATTERN_PKG_VERSION = Pattern.compile("_?(?<version>((?<dev>dev[\\d]+)x_)?(?<versionNum>([\\d]+[_])*\\d))");
 	public final static Pattern PATTERN_SCHEMA_VERSION = Pattern.compile("_?(?<version>((?<dev>dev[\\d]+)x_)?(?<versionNum>([\\d]+[\\._])*\\d))");
 	public final static Pattern PATTERN_SCHEMA_VERSION_IN_XML = Pattern.compile("schemaVersion=\"(?<version>[^\"]+)\"");
+	public static Pattern PATTERN_MATCH_ETP_VERSION = Pattern.compile("(?<digit2Version>[\\d]+(\\.[\\d]+)?)(\\.[\\d]+)*");
 
 	public static ResqmlAbstractType getFIRPObjectType(Class<?> resqmlclass) {
 		if(resqmlclass != null) {
@@ -124,7 +125,7 @@ public class Utils {
 		Pattern pat = Pattern.compile(Utils.PATTERN_PKG_VERSION + "$");
 		Matcher match = pat.matcher(pkg);
 		if(match.find()){
-			return match.group("versionNum").replace("_", ".") + (match.group("dev")!=null?match.group("dev"):"");
+			return match.group("versionNum").replace("_", ".") + (match.group("dev")!=null? match.group("dev"):"");
 		}
 		return null;
 	}
@@ -133,7 +134,16 @@ public class Utils {
 		T dor = dorClass.getConstructor().newInstance();
 		ObjectController.editObjectAttribute(dor, "uuid", ObjectController.getObjectAttributeValue(obj, "uuid"));
 		ObjectController.editObjectAttribute(dor, "title", ObjectController.getObjectAttributeValue(obj, "citation.title"));
-		ObjectController.editObjectAttribute(dor, "contentType", getContentType(obj));
+		try {
+			ObjectController.editObjectAttribute(dor, "contentType", getContentType(obj));
+		}catch (Exception e){
+			logger.debug(e.getMessage(), e);
+			try {
+				ObjectController.editObjectAttribute(dor, "qualifiedType", getQualifiedType(obj));
+			}catch (Exception e2){
+				logger.debug(e2.getMessage(), e2);
+			}
+		}
 		return dor;
 	}
 
@@ -144,7 +154,7 @@ public class Utils {
 			if(obj.getClass().getName().contains("energyml.common")){
 				contentType.append("eml");
 			}else {
-				Matcher match = patternSchema.matcher(obj.getClass().getName());
+				Matcher match = PATTERN_SCHEMA.matcher(obj.getClass().getName());
 				if (match.find()) {
 					contentType.append(match.group("pkgName"));
 				}
@@ -159,29 +169,7 @@ public class Utils {
 
 
 	public static String getQualifiedType(Object obj){
-		StringBuilder contentType = new StringBuilder();
-		if(obj != null){
-			contentType.append("application/x-");
-			if(obj.getClass().getName().contains("energyml.common")){
-				contentType.append("eml");
-			}else {
-				Matcher match = patternSchema.matcher(obj.getClass().getName());
-				if (match.find()) {
-					contentType.append(match.group("pkgName"));
-				}
-			}
-			StringBuilder version = new StringBuilder(Objects.requireNonNull(getSchemaVersionFromClassName(obj.getClass().getName())).replaceAll("\\.", ""));
-			while(version.length()<=0){
-				version.append("0");
-			}
-			if(version.length()>2){
-				version = new StringBuilder(version.substring(2));
-			}
-			contentType.append(version);
-			contentType.append(".");
-			contentType.append(obj.getClass().getSimpleName());
-		}
-		return contentType.toString();
+		return getEnergymlPackageName(obj) + "." + getObjectTypeForFilePath(obj);
 	}
 
 	public static String getResqmlObjectType(Object o) {
@@ -223,13 +211,13 @@ public class Utils {
 				case EXPANDED:
 					try {
 						String objVersion = (String) ObjectController.getObjectAttributeValue(obj, "ObjectVersion");
-						sb.append("namespace_").append(getResqmlPackageName(obj));
-						sb.append("/");
-
+						sb.append("namespace_").append(getEnergymlPackageName(obj));
 						if (objVersion != null && objVersion.length() > 0) {
+							sb.append("/");
 							sb.append("version_");
 							sb.append(objVersion);
 						}
+						sb.append("/");
 					}catch (Exception e) {
 						logger.error("Error reading object verson");
 					}
@@ -243,11 +231,16 @@ public class Utils {
 		return sb.toString();
 	}
 
-	public static String getResqmlPackageName(Object obj){
-		String name =  obj.getClass().getName();
-		name = name.substring(name.indexOf("."));
-		name = name.substring(0, name.indexOf("."));
-		return name;
+	public static String getEnergymlPackageName(Object obj){
+		Matcher m1 = Utils.PATTERN_SCHEMA.matcher(obj.getClass().getName());
+		if (m1.find()){
+			String version = m1.group("pkgVersion").replaceAll("[\\._]", "");
+			if(version.length()<=1){
+				version += "0";
+			}
+			return m1.group("pkgName") + version;
+		}
+		return "";
 	}
 
 	public static String getEPCObjectFileName(Object ao){
