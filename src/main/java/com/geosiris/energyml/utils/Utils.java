@@ -52,8 +52,9 @@ import java.util.zip.ZipOutputStream;
 
 public class Utils {
 	public static Logger logger = LogManager.getLogger(Utils.class);
+
 	public static final Pattern PATTERN_SCHEMA = Pattern.compile("energyml\\.(?<pkgId>(?<pkgName>[a-zA-Z\\d]+)(?<devVersion>_dev[\\d]+[a-zA-Z]+_)?(?<pkgVersion>[\\d]+([\\._][0-9]+)+))\\.(?<className>[\\w\\d]+)$");
-	public final static Pattern PATTERN_PKG_VERSION = Pattern.compile("_?(?<version>((?<dev>dev[\\d]+)x_)?(?<versionNum>([\\d]+[_])*\\d))");
+	public final static Pattern PATTERN_PKG_VERSION = Pattern.compile("(?<version>_?((?<dev>dev[\\d]+)x_)?(?<versionNum>([\\d]+[_])*\\d))");
 	public final static Pattern PATTERN_SCHEMA_VERSION = Pattern.compile("_?(?<version>((?<dev>dev[\\d]+)x_)?(?<versionNum>([\\d]+[\\._])*\\d))");
 	public final static Pattern PATTERN_SCHEMA_VERSION_IN_XML = Pattern.compile("schemaVersion=\"(?<version>[^\"]+)\"");
 	public static Pattern PATTERN_MATCH_ETP_VERSION = Pattern.compile("(?<digit2Version>[\\d]+(\\.[\\d]+)?)(\\.[\\d]+)*");

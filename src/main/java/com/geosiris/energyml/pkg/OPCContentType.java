@@ -17,19 +17,12 @@ package com.geosiris.energyml.pkg;
 
 
 import com.geosiris.energyml.utils.ContextBuilder;
-import com.geosiris.energyml.utils.ExportVersion;
-import com.geosiris.energyml.utils.ObjectController;
-import com.geosiris.energyml.utils.Utils;
 import energyml.content_types.Types;
-import energyml.relationships.Relationship;
-import energyml.relationships.Relationships;
 import jakarta.xml.bind.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class OPCContentType {
     public static JAXBContext JAXB_CONTEXT = ContextBuilder.createContext("energyml.content_types");

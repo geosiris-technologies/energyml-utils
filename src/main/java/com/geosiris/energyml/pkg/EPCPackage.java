@@ -138,11 +138,7 @@ public abstract class EPCPackage {
     }
 
     protected List<String> getAllVersionsPackagePath(Map<String, List<Class<?>>> pkgClasses) {
-        List<String> pkgPathList = new ArrayList<>();
-        for (String version : pkgClasses.keySet()) {
-            pkgPathList.add(getPackagePath(version));
-        }
-        return pkgPathList;
+        return new ArrayList<>(pkgClasses.keySet());
     }
 
     public List<Class<?>> getRootsElementsClasses(Map<String, List<Class<?>>> pkgClasses) {
@@ -221,7 +217,7 @@ public abstract class EPCPackage {
     }
 
     public String getPackagePath(String version) {
-        return packagePath + reformatSchemaVersion(version).replace(".", "_");
+        return packagePath + version.replace(".", "_");
     }
 
     public String getSchemaVersionFromClassName(String className) {

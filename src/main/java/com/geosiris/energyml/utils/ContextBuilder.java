@@ -31,7 +31,25 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class ContextBuilder {
-	public static Logger logger = LogManager.getLogger(ContextBuilder.class);
+	public static final Logger logger = LogManager.getLogger(ContextBuilder.class);
+
+	public static final Pattern PATTERN_ENERGYML_CLASS_NAME = Pattern.compile("(?<prefix>[\\w\\.]+)\\.(?<name>"
+			+ ContextBuilder.getPkgNamePattern()
+			+ ")(?<version>(?<devPrefix>_(?<dev>dev[\\d]+)x_)?(?<versionNum>([\\d]+[\\._])*\\d))(\\.(?<className>\\w+))?");
+
+	public static final List<String> energymlPkgNameList = new ArrayList<>(List.of(new String[]{"common", "resqml", "witsml", "prodml"}));
+
+	public static String getPkgNamePattern(){
+		StringBuilder res = new StringBuilder();
+		for(String name: energymlPkgNameList){
+			res.append(name);
+			res.append("|");
+		}
+		if(energymlPkgNameList.size() > 0) { // removing last "|" char
+			res = new StringBuilder(res.substring(0, res.length() - 1));
+		}
+		return res.toString();
+	}
 
 	public static JAXBContext getContext(String pkg) {
 		try {
@@ -42,6 +60,15 @@ public class ContextBuilder {
 		logger.error("[ENERGYML] #Err# Context : " + pkg + " not created !");
 		return null;
 	}
+
+	public static List<String> findAllEnergymlPackages(String pkgPrefix){
+		List<String> pkgs = new ArrayList<>();
+		for(String pkgName: energymlPkgNameList){
+			pkgs.addAll(listPackages(pkgPrefix + "." + pkgName));
+		}
+		return pkgs;
+	}
+
 	public static Map<String, List<Class<?>>> getClassesForVersion(final String packageNamePrefix) {
 		Map<String, List<Class<?>>> result = new HashMap<>();
 		List<String> versions = getPackagesVersions(packageNamePrefix);

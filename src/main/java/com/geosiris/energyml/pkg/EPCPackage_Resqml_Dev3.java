@@ -23,7 +23,7 @@ import java.util.Map;
 
 public class EPCPackage_Resqml_Dev3 extends EPCPackage {
     public static Logger logger = LogManager.getLogger(EPCPackage_Resqml_Dev3.class);
-	private final static String staticPkgPath = "energyml.resqml_dev3x_";
+	private final static String staticPkgPath = "energyml.resqml";
 	
 	public static final Map<String, List<Class<?>>> pkgClasses = searchAllClassesForVersions(staticPkgPath);
 
@@ -35,7 +35,6 @@ public class EPCPackage_Resqml_Dev3 extends EPCPackage {
 		super("resqml (dev3)", staticPkgPath, xsdMappingFilePath);
 		logger.info("EPCPackage_Resqml_Dev3 initialized "  + pkgClasses.keySet());
 	}
-
 
 	@Override
 	public Map<String, List<Class<?>>> getAllClassesForVersion() {
