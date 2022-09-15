@@ -101,7 +101,9 @@ public class ContextBuilder {
 	public static Set<String> findInZip(URL zipUrl, String regex, boolean onlyDir, boolean onlyFiles){
 		Set<String> result = new HashSet<>();
 		String finalUrl = zipUrl.getPath().replaceAll(".jar!/.*", ".jar")
-				.replaceAll("^[(file|jar):]+/", "");
+				.replaceAll("^[(file|jar):]+/", "")
+				.replaceAll("%20", " ")
+				.replaceAll("%5", "\\");
 
 		ZipInputStream zip = null;
 		try {
@@ -109,7 +111,9 @@ public class ContextBuilder {
 		}catch (IOException e){
 			try {
 				finalUrl = zipUrl.getPath().replaceAll(".jar!/.*", ".jar")
-						.replaceAll("^[(file|jar):]+", ""); // without removing the first "/" after the ":"
+						.replaceAll("^[(file|jar):]+", "")
+						.replaceAll("%20", " ")
+						.replaceAll("%5", "\\"); // without removing the first "/" after the ":"
 				zip = new ZipInputStream(new FileInputStream(finalUrl));
 			}catch (IOException e2){
 				logger.error(e.getMessage(), e);

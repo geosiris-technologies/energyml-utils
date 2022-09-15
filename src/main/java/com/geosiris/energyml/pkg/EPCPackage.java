@@ -228,7 +228,7 @@ public class EPCPackage {
             }
             logger.debug(e.getMessage(), e);
             logger.debug("File not read : ");
-            logger.debug(xmlContent);
+            logger.debug(xmlContent.substring(0,500) + " [.....]");
             if(vec != null){
                 logger.debug("\tRead event [" + vec.getEvents().length + "]");
                 for (ValidationEvent ev : vec.getEvents()) {

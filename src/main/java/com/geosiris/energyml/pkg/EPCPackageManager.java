@@ -52,13 +52,15 @@ public class EPCPackageManager {
     public final static String DEFAULT_CITATION_FORMAT = "Geosiris WebStudio";
     public final static String DEFAULT_CITATION_ORIGINATOR = "Geosiris user";
 
-    public final static Pattern PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE = Pattern.compile("schemaVersion=\"(?<schemaVersion>[^\"]*)\"", Pattern.CASE_INSENSITIVE);
+    public final static Pattern PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE = Pattern
+            .compile("schemaVersion=\"(?<schemaVersion>[^\"]*)\"", Pattern.CASE_INSENSITIVE);
 
     private String xsdCommentsFolderPath;
     private final String accessibleDORFilePath;
     public final List<EPCPackage> PKG_LIST;
 
-    public EPCPackageManager(String energymlPkgPrefix, String xsdCommentsFolderPath, String accessibleDORFilePath, String xsdMappingFilePath) {
+    public EPCPackageManager(String energymlPkgPrefix, String xsdCommentsFolderPath, String accessibleDORFilePath,
+            String xsdMappingFilePath) {
         this(initPkgList(energymlPkgPrefix, xsdMappingFilePath), xsdCommentsFolderPath, accessibleDORFilePath);
     }
 
@@ -80,24 +82,25 @@ public class EPCPackageManager {
     }
 
     public static List<EPCPackage> initPkgList(String energymlPkgPrefix, String xsdMappingFilePath) {
-        ArrayList<EPCPackage> pkgs = new ArrayList<>();
-
         Map<String, String> xsdMapping = Utils.readJsonFileOrRessource(xsdMappingFilePath, HashMap.class);
 
-        for(String pkgPath : ContextBuilder.findAllEnergymlPackages(energymlPkgPrefix)){
-            String xsdPath = null;
-            if(xsdMapping != null && xsdMapping.containsKey(pkgPath)){
-                xsdPath = xsdMapping.get(pkgPath);
-            }else{
-                logger.error("@initPkgList: xsd path not found in mappin '" + xsdMappingFilePath +"' for package '" + pkgPath + "'");
-            }
-            try {
-                pkgs.add(new EPCPackage(pkgPath, xsdPath));
-            } catch (EPCPackageInitializationException e) {
-                logger.error("@initPkgList: error during package instanciation for package path '" + pkgPath + "'");
-            }
-        }
-        return pkgs;
+        return ContextBuilder.findAllEnergymlPackages(energymlPkgPrefix).parallelStream().map(
+                (pkgPath) -> {
+                    String xsdPath = null;
+                    if (xsdMapping != null && xsdMapping.containsKey(pkgPath)) {
+                        xsdPath = xsdMapping.get(pkgPath);
+                    } else {
+                        logger.error("@initPkgList: xsd path not found in mappin '" + xsdMappingFilePath
+                                + "' for package '" + pkgPath + "'");
+                    }
+                    try {
+                        return new EPCPackage(pkgPath, xsdPath);
+                    } catch (EPCPackageInitializationException e) {
+                        logger.error(
+                                "@initPkgList: error during package instanciation for package path '" + pkgPath + "'");
+                    }
+                    return null;
+                }).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     public static String getEPCPackagesGroups(String epcPackageGroupPath) {
@@ -135,11 +138,11 @@ public class EPCPackageManager {
     public JAXBElement<?> unmarshal(String xmlContent) {
         String schemaVersionFound = null;
         Matcher matcherXMLSchemaV = PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE.matcher(xmlContent);
-        if(matcherXMLSchemaV.find()){
+        if (matcherXMLSchemaV.find()) {
             schemaVersionFound = EPCGenericManager.reformatSchemaVersion(matcherXMLSchemaV.group("schemaVersion"));
         }
         for (EPCPackage pkg : PKG_LIST) {
-            if(schemaVersionFound == null || pkg.getVersionNum().compareToIgnoreCase(schemaVersionFound) == 0) {
+            if (schemaVersionFound == null || pkg.getVersionNum().compareToIgnoreCase(schemaVersionFound) == 0) {
                 JAXBElement<?> obj = pkg.parseXmlContent(xmlContent);
                 if (obj != null) {
                     return obj;
@@ -147,9 +150,9 @@ public class EPCPackageManager {
             }
         }
         // Testing with other package if failed with pkg matching schemaVersion
-        if(schemaVersionFound != null){
+        if (schemaVersionFound != null) {
             for (EPCPackage pkg : PKG_LIST) {
-                if(pkg.getVersionNum() .compareToIgnoreCase(schemaVersionFound) != 0) {
+                if (pkg.getVersionNum().compareToIgnoreCase(schemaVersionFound) != 0) {
                     JAXBElement<?> obj = pkg.parseXmlContent(xmlContent);
                     if (obj != null) {
                         return obj;
@@ -192,17 +195,17 @@ public class EPCPackageManager {
     }
 
     public Object createInstance(String objClassName, Map<String, Object> epcObjects,
-                                 Object value, boolean nullable) {
+            Object value, boolean nullable) {
         return createInstance(objClassName, epcObjects, value, null, nullable);
     }
 
     public Object createInstance(String objClassName, Map<String, Object> epcObjects,
-                                 Object value) {
+            Object value) {
         return createInstance(objClassName, epcObjects, value, null, true);
     }
 
     public Object createInstance(String objClassName, Map<String, Object> epcObjects,
-                                 Object value, String userName, boolean nullable) {
+            Object value, String userName, boolean nullable) {
         Object objInstance = null;
         String objClassLower = objClassName.toLowerCase();
 
@@ -228,7 +231,7 @@ public class EPCPackageManager {
                         objInstance = objectClass.getEnumConstants()[0];
                     }
                 } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
-                         | InvocationTargetException e) {
+                        | InvocationTargetException e) {
                     for (Object enumVal : objectClass.getEnumConstants()) {
                         if ((enumVal + "").compareTo(value + "") == 0) {
                             objInstance = enumVal;
@@ -349,7 +352,7 @@ public class EPCPackageManager {
     }
 
     public Object modifyNewInstance(Object instance, Map<String, Object> epcObjects, Object value,
-                                    String userName) {
+            String userName) {
         logger.error("Modifying instance " + instance);
         if (instance != null) {
             String objClassNameLower = instance.getClass().getName().toLowerCase();
@@ -373,7 +376,8 @@ public class EPCPackageManager {
                         logger.error(e.getMessage(), e);
                     }
                     try {
-                        ObjectController.editObjectAttribute(instance, "ContentType", EPCGenericManager.getObjectContentType(resqmlObj));
+                        ObjectController.editObjectAttribute(instance, "ContentType",
+                                EPCGenericManager.getObjectContentType(resqmlObj));
                     } catch (Exception e) {
                         logger.error(e.getMessage(), e);
                     }
@@ -394,7 +398,8 @@ public class EPCPackageManager {
                 }
 
                 try {
-                    ObjectController.editObjectAttribute(instance, ".SchemaVersion", EPCGenericManager.getSchemaVersion(instance));
+                    ObjectController.editObjectAttribute(instance, ".SchemaVersion",
+                            EPCGenericManager.getSchemaVersion(instance));
                 } catch (Exception e) {
                     logger.error(e.getMessage(), e);
                 }
@@ -495,7 +500,8 @@ public class EPCPackageManager {
     }
 
     public List<Class<?>> getRootClasses() {
-        return PKG_LIST.stream().map(EPCPackage::getRootsElementsClasses).flatMap(List::stream).collect(Collectors.toList());
+        return PKG_LIST.stream().map(EPCPackage::getRootsElementsClasses).flatMap(List::stream)
+                .collect(Collectors.toList());
     }
 
     public HashMap<Class<?>, List<Object>> getResqmlEnumValues() {
@@ -542,7 +548,7 @@ public class EPCPackageManager {
     public List<Class<?>> getInheritorClasses(String rootClassName) {
         Class<?> rootClass = getClassFromName(rootClassName);
         return getClasses().stream().filter(
-                        objClass -> !Modifier.isAbstract(objClass.getModifiers()) && rootClass.isAssignableFrom(objClass))
+                objClass -> !Modifier.isAbstract(objClass.getModifiers()) && rootClass.isAssignableFrom(objClass))
                 .collect(Collectors.toList());
     }
 
@@ -556,7 +562,8 @@ public class EPCPackageManager {
         for (EPCPackage pkg : PKG_LIST) {
             try {
                 logger.info("@getClassesComment " + pkg);
-                result.putAll(Utils.readJsonFileOrRessource(xsdCommentsFolderPath + pkg.getPackageName() + ".json", HashMap.class));
+                result.putAll(Utils.readJsonFileOrRessource(xsdCommentsFolderPath + pkg.getPackageName() + ".json",
+                        HashMap.class));
             } catch (Exception ignore) {
             }
         }
@@ -565,15 +572,17 @@ public class EPCPackageManager {
     }
 
     public Map<String, String> getExtTypesAsJson(String extTypeJsonFolderPath) {
-        if(!extTypeJsonFolderPath.endsWith("/") && !extTypeJsonFolderPath.endsWith("\\"))
+        if (!extTypeJsonFolderPath.endsWith("/") && !extTypeJsonFolderPath.endsWith("\\"))
             extTypeJsonFolderPath += "/";
         logger.debug("Starting reading Ext types");
         Map<String, Map<String, String>> extTypesAttributes_perPkg = new HashMap<>();
         for (EPCPackage pkg : PKG_LIST) {
             try {
                 extTypesAttributes_perPkg.putAll(
-                        Utils.readJsonFileOrRessource(extTypeJsonFolderPath + pkg.getPackageName() + ".json", HashMap.class));
-            } catch (Exception ignore) {}
+                        Utils.readJsonFileOrRessource(extTypeJsonFolderPath + pkg.getPackageName() + ".json",
+                                HashMap.class));
+            } catch (Exception ignore) {
+            }
         }
 
         HashMap<String, String> extTypesAttributesResult = new HashMap<>();

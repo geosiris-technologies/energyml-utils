@@ -123,67 +123,80 @@ public class Utils {
 		return relationships;
 	}
 
-
-
 	public static <T> T readJsonFileOrRessource(String path, Class<?> mainClass){
-		Gson gson = new Gson();
-		T res = null;
-
-		URL ressourceURL = Utils.class.getResource(path);
-		BufferedReader reader = null;
-
 		try {
-			reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(Utils.class.getResourceAsStream(path))));
-		} catch (Exception e) {
+			Gson gson = new Gson();
+			T res = null;
+
+			path = path.replaceAll("%20", " ");
+			path = path.replaceAll("%5", "\\");
+
+			URL ressourceURL = Utils.class.getResource(path);
+			BufferedReader reader = null;
+
 			try {
-				reader = new BufferedReader(new FileReader(path));
-			} catch (FileNotFoundException e2) {
-				logger.error("Error reading " + path + " = " + ressourceURL);
-				logger.debug(e.getMessage(), e);
-				logger.debug(e2.getMessage(), e2);
-			}
-		}
-		if(reader != null) {
-			try {
-				res = (T) gson.fromJson(reader, mainClass);
+				reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(Utils.class.getResourceAsStream(path))));
 			} catch (Exception e) {
-				logger.error("Error reading " + path + " = " + ressourceURL);
-				logger.debug(e.getMessage(), e);
+				try {
+					reader = new BufferedReader(new FileReader(path));
+				} catch (FileNotFoundException e2) {
+					logger.error("Error reading " + path + " = " + ressourceURL);
+					logger.debug(e.getMessage(), e);
+					logger.debug(e2.getMessage(), e2);
+				}
 			}
+			if (reader != null) {
+				try {
+					res = (T) gson.fromJson(reader, mainClass);
+				} catch (Exception e) {
+					logger.error("Error reading " + path + " = " + ressourceURL);
+					logger.debug(e.getMessage(), e);
+				}
+			}
+			return res;
+		}catch (Exception e){
+			logger.error(e.getMessage(), e);
 		}
-		return res;
+		return null;
 	}
 
 	public static String readFileOrRessource(String path){
-		Gson gson = new Gson();
-		StringBuilder res = new StringBuilder();
-
-		URL ressourceURL = Utils.class.getResource(path);
-		BufferedReader reader = null;
-
 		try {
-			reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(Utils.class.getResourceAsStream(path))));
-		} catch (Exception e) {
+			StringBuilder res = new StringBuilder();
+
+			path = path.replaceAll("%20", " ");
+			path = path.replaceAll("%5", "\\");
+
+			URL ressourceURL = Utils.class.getResource(path);
+			BufferedReader reader = null;
+
 			try {
-				reader = new BufferedReader(new FileReader(path));
-			} catch (FileNotFoundException e2) {
-				logger.error("Error reading " + path + " = " + ressourceURL);
-				logger.debug(e.getMessage(), e);
-				logger.debug(e2.getMessage(), e2);
-			}
-		}
-		if(reader != null) {
-			try {
-				String strCurrentLine = "";
-				while ((strCurrentLine = reader.readLine()) != null) {
-					res.append(strCurrentLine);
-				}
+				reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(Utils.class.getResourceAsStream(path))));
 			} catch (Exception e) {
-				logger.error("Error reading " + path + " = " + ressourceURL);
-				logger.debug(e.getMessage(), e);
+				try {
+					reader = new BufferedReader(new FileReader(path));
+				} catch (FileNotFoundException e2) {
+					logger.error("Error reading " + path + " = " + ressourceURL);
+					logger.debug(e.getMessage(), e);
+					logger.debug(e2.getMessage(), e2);
+				}
 			}
+			if (reader != null) {
+				try {
+					String strCurrentLine = "";
+					while ((strCurrentLine = reader.readLine()) != null) {
+						res.append(strCurrentLine);
+					}
+				} catch (Exception e) {
+					logger.error("Error reading " + path + " = " + ressourceURL);
+					logger.debug(e.getMessage(), e);
+				}
+			}
+			return res.toString();
+		}catch (Exception e){
+			logger.error(e.getMessage(), e);
 		}
-		return res.toString();
+		return null;
 	}
 
 }

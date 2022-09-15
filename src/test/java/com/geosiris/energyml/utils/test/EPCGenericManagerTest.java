@@ -15,11 +15,13 @@ limitations under the License.
 */
 package com.geosiris.energyml.utils.test;
 
+import com.geosiris.energyml.pkg.EPCPackageManager;
 import com.geosiris.energyml.utils.EPCGenericManager;
 import com.geosiris.energyml.utils.ExportVersion;
 import com.geosiris.energyml.utils.Utils;
 import energyml.common2_3.Citation;
 import energyml.resqml2_2.TriangulatedSetRepresentation;
+import jdk.jshell.execution.Util;
 import org.junit.jupiter.api.Test;
 
 import java.util.Objects;
@@ -185,5 +187,11 @@ public class EPCGenericManagerTest {
         tr.setCitation(cit);
 
         return tr;
+    }
+
+    public static void main(String[] argv){
+        EPCPackageManager manager = new EPCPackageManager("energyml", "", "", "");
+        String tr0 = Utils.readFileOrRessource("C:/Users/Cryptaro/Downloads/TriangulatedSetRepresentation_616f910c-b3f2-4910-978b-146c21762d12.xml");
+        System.out.println(tr0);
     }
 }
