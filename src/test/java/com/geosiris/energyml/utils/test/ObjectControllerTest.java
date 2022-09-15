@@ -18,7 +18,10 @@ package com.geosiris.energyml.utils.test;
 import com.geosiris.energyml.utils.ObjectController;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ObjectControllerTest {
     private static final SampleClass_A objTest = new SampleClass_A();

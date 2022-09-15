@@ -33,10 +33,6 @@ import java.util.zip.ZipInputStream;
 public class ContextBuilder {
 	public static final Logger logger = LogManager.getLogger(ContextBuilder.class);
 
-	public static final Pattern PATTERN_ENERGYML_CLASS_NAME = Pattern.compile("(?<prefix>[\\w\\.]+)\\.(?<name>"
-			+ ContextBuilder.getPkgNamePattern()
-			+ ")(?<version>(?<devPrefix>_(?<dev>dev[\\d]+)x_)?(?<versionNum>([\\d]+[\\._])*\\d))(\\.(?<className>\\w+))?");
-
 	public static final List<String> energymlPkgNameList = new ArrayList<>(List.of(new String[]{"common", "resqml", "witsml", "prodml"}));
 
 	public static String getPkgNamePattern(){
@@ -222,7 +218,7 @@ public class ContextBuilder {
 
 	public static List<String> getPackagesVersions(final String packageName){
 		List<String> foundVersions = new ArrayList<>();
-		Pattern pattern = Pattern.compile(packageName + Utils.PATTERN_PKG_VERSION);
+		Pattern pattern = Pattern.compile(packageName + EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME);
 
 		// Si on a rien trouve dans les classes du projet on cherche dans les jars du buildPath
 		for (String pkg : listPackages(packageName.replace('.', '/'))) {
