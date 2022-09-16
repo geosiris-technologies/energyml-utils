@@ -31,9 +31,9 @@ import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 public class EPCGenericManagerTest {
-    private final String cName_tsr201 = "energyml.resqml2_0_1.TriangulatedSetRepresentation";
+    private final String cName_tsr201 = "energyml.resqml2_0_1.ObjTriangulatedSetRepresentation";
     private final String cName_tsr22 = "energyml.resqml2_2.TriangulatedSetRepresentation";
-    private final String cName_tsr22dev3 = "energyml.resqml_dev3x_2_2.ObjTriangulatedSetRepresentation";
+    private final String cName_tsr22dev3 = "energyml.resqml_dev3x_2_2.TriangulatedSetRepresentation";
     private final String cName_act23 = "energyml.common2_3.Activity";
     private final String cName_notExist0 = "energyml.unkownpkg2_3.Activity";
 
@@ -170,7 +170,7 @@ public class EPCGenericManagerTest {
     @Test
     void test_getObjectTypeForFilePath_fromClassName(){
         assert EPCGenericManager.getObjectTypeForFilePath(TR_TEST).compareTo("TriangulatedSetRepresentation") == 0;
-        assert EPCGenericManager.getObjectTypeForFilePath_fromClassName(cName_tsr22dev3).compareTo("obj_TriangulatedSetRepresentation") == 0;
+        assert EPCGenericManager.getObjectTypeForFilePath_fromClassName(cName_tsr201).compareTo("obj_TriangulatedSetRepresentation") == 0;
     }
 
     @Test
