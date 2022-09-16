@@ -139,7 +139,7 @@ public class EPCPackageManager {
 
     public Boolean hasDevVersion(EPCPackage refPkg) {
             for (EPCPackage pkg : PKG_LIST) {
-                if (pkg.getName().compareToIgnoreCase(refPkg.getName()) == 0
+                if (pkg.getDomain().compareToIgnoreCase(refPkg.getDomain()) == 0
                         && pkg.getPackagePath().compareTo(refPkg.getPackagePath()) !=0
                         && pkg.getVersionNum().compareTo(refPkg.getVersionNum()) == 0
                         && pkg.isDevVersion()) {
@@ -285,7 +285,7 @@ public class EPCPackageManager {
                     logger.error("EPCManager : Matching package : " + packageMatch);
                     if (packageMatch != null) {
                         logger.error(
-                                "EPCManager :  for package " + packageMatch.getName());
+                                "EPCManager :  for package " + packageMatch.getDomain());
                         objInstance = packageMatch.createInstance(objClassName);
                         logger.error("objInstance " + objInstance);
                         modifyNewInstance(objInstance, epcObjects, value, userName);
@@ -395,7 +395,7 @@ public class EPCPackageManager {
 
                 if (epcObjects.containsKey(value)) {
                     Object resqmlObj = epcObjects.get(value);
-                    logger.debug(">> DOR : " + resqmlObj + " --> " + EPCGenericManager.getObjectContentType(resqmlObj));
+                    logger.debug(">> DOR : " + resqmlObj + " --> " + EPCGenericManager.getObjectContentType(resqmlObj, true));
 
                     try {
                         ObjectController.editObjectAttribute(instance, "title",
@@ -405,13 +405,13 @@ public class EPCPackageManager {
                     }
                     try {
                         ObjectController.editObjectAttribute(instance, "ContentType",
-                                EPCGenericManager.getObjectContentType(resqmlObj));
+                                EPCGenericManager.getObjectContentType(resqmlObj, true));
                     } catch (Exception e) {
                         logger.error(e.getMessage(), e);
                     }
                     try { // FOR new 2.2
                         ObjectController.editObjectAttribute(instance, "QualifiedType",
-                                EPCGenericManager.getObjectQualifiedType(resqmlObj));
+                                EPCGenericManager.getObjectQualifiedType(resqmlObj, true));
                     } catch (Exception e) {
                         logger.error(e.getMessage(), e);
                     }
@@ -427,7 +427,7 @@ public class EPCPackageManager {
 
                 try {
                     ObjectController.editObjectAttribute(instance, ".SchemaVersion",
-                            EPCGenericManager.getSchemaVersion(instance));
+                            EPCGenericManager.getSchemaVersion(instance, true));
                 } catch (Exception e) {
                     logger.error(e.getMessage(), e);
                 }

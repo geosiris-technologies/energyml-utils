@@ -47,11 +47,11 @@ public class EPCPackage {
 
     protected List<Class<?>> pkgClasses;
 
-    protected final String name;
+    protected final String domain;
     /**
      * Version of the package : for resqml2_2 is '2.2', for resqml_dev3x_2_2 is '2.2dev3'
      */
-    protected final String version;
+    protected final String domainVersion;
     protected final String versionNum;
     protected final String devVersionNum;
     protected final String packageName;
@@ -68,8 +68,8 @@ public class EPCPackage {
 
         Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(pkgPath);
         if(pkgMatch.find()){
-            this.name = pkgMatch.group("name");
-            this.version = (pkgMatch.group("versionNum") + (pkgMatch.group("dev") != null ? pkgMatch.group("dev"): "")).replace("_", ".");
+            this.domain = pkgMatch.group("domain");
+            this.domainVersion = (pkgMatch.group("versionNum") + (pkgMatch.group("dev") != null ? pkgMatch.group("dev"): "")).replace("_", ".");
             this.packageName = pkgMatch.group("packageName");
             this.versionNum = pkgMatch.group("versionNum").replace("_", ".");
             try {
@@ -145,7 +145,7 @@ public class EPCPackage {
             Class<?> objClass = Class.forName(this.packagePath + ".ObjectFactory");
             return objClass.getConstructor().newInstance();
         } catch (Exception e) {
-            logger.error("Error in getResqmlFactory with schemaVersion '" + version + "'");
+            logger.error("Error in getResqmlFactory with schemaVersion '" + domainVersion + "'");
             logger.error(e.getMessage(), e);
         }
         return null;
@@ -348,12 +348,12 @@ public class EPCPackage {
     \____/\___/\__/\__/\___/_/  /____/_/   /____/\___/\__/\__/\___/_/  /____/
 */
 
-    public String getName() {
-        return name;
+    public String getDomain() {
+        return domain;
     }
 
-    public String getVersion() {
-        return version;
+    public String getDomainVersion() {
+        return domainVersion;
     }
 
     public String getVersionNum() {

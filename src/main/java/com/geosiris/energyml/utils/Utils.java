@@ -89,11 +89,11 @@ public class Utils {
 		ObjectController.editObjectAttribute(dor, "uuid", ObjectController.getObjectAttributeValue(obj, "uuid"));
 		ObjectController.editObjectAttribute(dor, "title", ObjectController.getObjectAttributeValue(obj, "citation.title"));
 		try {
-			ObjectController.editObjectAttribute(dor, "contentType", EPCGenericManager.getObjectContentType(obj));
+			ObjectController.editObjectAttribute(dor, "contentType", EPCGenericManager.getObjectContentType(obj, true));
 		}catch (Exception e){
 			logger.debug(e.getMessage(), e);
 			try {
-				ObjectController.editObjectAttribute(dor, "qualifiedType", EPCGenericManager.getObjectQualifiedType(obj));
+				ObjectController.editObjectAttribute(dor, "qualifiedType", EPCGenericManager.getObjectQualifiedType(obj, true));
 			}catch (Exception e2){
 				logger.debug(e2.getMessage(), e2);
 			}
@@ -110,7 +110,7 @@ public class Utils {
 		Map<String, List<String>> relationships = new HashMap<>();
 
 		for(Map.Entry<String, Object> entry : contextObjects.entrySet()){
-			List<Object> dorList = ObjectController.findSubObjects(entry.getValue(), "DataObjectReference");
+			List<Object> dorList = ObjectController.findSubObjects(entry.getValue(), "DataObjectReference", true);
 			for(Object dor : dorList){
 				String dor_uuid = (String) ObjectController.getObjectAttributeValue(dor, "uuid");
 				if(!relationships.containsKey(dor_uuid)){
@@ -183,7 +183,7 @@ public class Utils {
 			}
 			if (reader != null) {
 				try {
-					String strCurrentLine = "";
+					String strCurrentLine;
 					while ((strCurrentLine = reader.readLine()) != null) {
 						res.append(strCurrentLine);
 					}

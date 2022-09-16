@@ -25,21 +25,21 @@ public class EPCPackageTest {
     void testPkgInformation() throws EPCPackageInitializationException {
         EPCPackage pkg22 = new EPCPackage("energyml.resqml2_2", "");
 
-        assert pkg22.getVersion().compareTo("2.2") == 0;
+        assert pkg22.getDomainVersion().compareTo("2.2") == 0;
         assert pkg22.getVersionNum().compareTo("2.2") == 0;
         assert pkg22.getPackagePath().compareTo("energyml.resqml2_2") == 0;
         assert pkg22.getPackageName().compareTo("resqml2_2") == 0;
-        assert pkg22.getName().compareTo("resqml") == 0;
+        assert pkg22.getDomain().compareTo("resqml") == 0;
         assert !pkg22.isDevVersion();
 
         EPCPackage pkg22dev3 = new EPCPackage("energyml.resqml_dev3x_2_2", "");
 
-        assert pkg22dev3.getVersion().compareTo("2.2dev3") == 0;
+        assert pkg22dev3.getDomainVersion().compareTo("2.2dev3") == 0;
         assert pkg22dev3.getVersionNum().compareTo("2.2") == 0;
         assert pkg22dev3.getDevVersionNum().compareTo("3") == 0;
         assert pkg22dev3.getPackagePath().compareTo("energyml.resqml_dev3x_2_2") == 0;
         assert pkg22dev3.getPackageName().compareTo("resqml_dev3x_2_2") == 0;
-        assert pkg22dev3.getName().compareTo("resqml") == 0;
+        assert pkg22dev3.getDomain().compareTo("resqml") == 0;
         assert pkg22dev3.isDevVersion();
     }
 }

@@ -46,17 +46,24 @@ import java.util.zip.ZipOutputStream;
 public class EPCGenericManager {
     public static Logger logger = LogManager.getLogger(EPCGenericManager.class);
 
-    public static final String REGEX_ENERGYML_CLASS_NAME = "(?<prefix>[\\w\\.]+)\\.(?<packageName>(?<name>"
+    public static final String REGEX_DOMAIN_VERSION = "(?<domainVersion>(?<versionNum>([\\d]+[\\._])*\\d)\\s*(?<dev>dev\\s*(?<devNum>[\\d]+))?)";
+    public static final String REGEX_DOMAIN_VERSION_FLAT = "(?<domainVersion>(?<versionNumFlat>([\\d]+)*\\d)\\s*(?<dev>dev\\s*(?<devNum>[\\d]+))?)";
+    public static final String REGEX_ENERGYML_CLASS_NAME = "(?<prefix>[\\w\\.]+)\\.(?<packageName>(?<domain>"
             + ContextBuilder.getPkgNamePattern()
-            + ")(?<version>(?<devPrefix>_(?<dev>dev(?<devNum>[\\d]+))x_)?(?<versionNum>([\\d]+[\\._])*\\d)))(\\.(?<className>\\w+))?";
+            + ")(?<version>(?<devPrefix>_(?<dev>dev(?<devNum>[\\d]+))x_)?(?<versionNum>([\\d]+[\\._])*\\d)))(\\.(?<type>\\w+))?";
 
     public static final String REGEX_ENERGYML_SCHEMA_VERSION ="(?<name>"
             + ContextBuilder.getPkgNamePattern()
-            + ")?\\s*v?(?<versionNum>([\\d]+[\\._])*\\d)\\s*(?<dev>dev\\s*(?<devNum>[\\d]+))?\\s*$";
+            + ")?\\s*v?" + REGEX_DOMAIN_VERSION + "\\s*$";
+
+    public static final Pattern PATTERN_CONTENT_TYPE =
+            Pattern.compile("application/(?<xmlDomain>x\\-(?<domain>[\\w]+)\\+xml);version=" + REGEX_DOMAIN_VERSION + ";type=(?<type>\\w+)\\s*$");
+    public static final Pattern PATTERN_QUALIFIED_TYPE = Pattern.compile("(?<domain>[a-zA-Z]+)" + REGEX_DOMAIN_VERSION_FLAT + "\\.(?<type>[\\w_]+)");
+
+    public static final Pattern PATTERN_UUID = Pattern.compile("(?<uuid>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
 
     public static final Pattern PATTERN_ENERGYML_CLASS_NAME = Pattern.compile(REGEX_ENERGYML_CLASS_NAME);
     public static final Pattern PATTERN_ENERGYML_SCHEMA_VERSION = Pattern.compile(REGEX_ENERGYML_SCHEMA_VERSION, Pattern.CASE_INSENSITIVE);
-    private final static Pattern PATTERN_CONTENT_TYPE_TYPE = Pattern.compile("type=([\\w]+)");
 
     public static List<Object> getAccessibleDORsSimple(Object resqmlCurrentObj, Collection<Object> resqmlObjList) {
         List<Object> accessible = new ArrayList<>();
@@ -146,9 +153,9 @@ public class EPCGenericManager {
                         try{
                             contentType = (String) ObjectController.getObjectAttributeValue(dataObject.get(0), "qualifiedType");
                         }catch(Exception ignore){}
-                        Matcher m = PATTERN_CONTENT_TYPE_TYPE.matcher(contentType);
+                        Matcher m = PATTERN_CONTENT_TYPE.matcher(contentType);
                         if (m.find()) {
-                            String dorType = m.group(1);
+                            String dorType = m.group("type");
                             if (dorType.startsWith("obj_")) {
                                 dorType = dorType.substring(4);
                             }
@@ -178,7 +185,7 @@ public class EPCGenericManager {
     }
 
     private static Boolean isReferencer(String uuid, Object resqmlObj) {
-        List<Object> referencedDOR = ObjectController.findSubObjects(resqmlObj, "DataObjectReference");
+        List<Object> referencedDOR = ObjectController.findSubObjects(resqmlObj, "DataObjectReference", true);
         for (Object dor : referencedDOR) {
             String refUuid = (String) ObjectController.getObjectAttributeValue(dor, "uuid");
             if (refUuid != null && uuid.compareTo(refUuid) == 0) {
@@ -314,7 +321,7 @@ public class EPCGenericManager {
                 case EXPANDED:
                     try {
                         String objVersion = (String) ObjectController.getObjectAttributeValue(obj, "ObjectVersion");
-                        sb.append("namespace_").append(getPackageIdentifier_withVersionForETP(obj, 2, 2));
+                        sb.append("namespace_").append(getPackageDomain_withVersionForETP(obj, 2, 2, true));
                         if (objVersion != null && objVersion.length() > 0) {
                             sb.append("/");
                             sb.append("version_");
@@ -407,7 +414,7 @@ public class EPCGenericManager {
             List<String> dest = relationsDest.get(uuid);
             if (dest == null) dest = new ArrayList<>();
 
-            List<String> source = ObjectController.findSubObjects(resqmlObj, "DataObjectReference").stream()
+            List<String> source = ObjectController.findSubObjects(resqmlObj, "DataObjectReference", true).stream()
                     .map(obj -> {
                         try{ return (String) ObjectController.getObjectAttributeValue(obj, "uuid");
                         }catch (Exception ignore){}
@@ -459,7 +466,7 @@ public class EPCGenericManager {
             out.closeEntry();
 
             Override overrideObjRels = new Override();
-            overrideObjRels.setContentType(getObjectContentType(resqmlObj));
+            overrideObjRels.setContentType(getObjectContentType(resqmlObj, true));
             overrideObjRels.setPartName("/" + genPathInEPC(resqmlObj, exportVersion)); // On ajoute le "/" car obligatoire pour etre lu dans ResqmlCAD
             contentTypeFile.getDefaultOrOverride().add(overrideObjRels);
         }
@@ -517,26 +524,54 @@ public class EPCGenericManager {
         return false;
     }
 
-    public static String getSchemaVersionFromClassName(String className) {
+    public static String findUUID(String content){
+        if(content != null) {
+            Matcher m = PATTERN_UUID.matcher(content);
+            if (m.find()) {
+                return m.group("uuid");
+            }
+        }
+        return null;
+    }
+
+    public static Pair<String, String> getDomainAndVersionFromContentType(String contentType){
+        Matcher m = PATTERN_CONTENT_TYPE.matcher(contentType);
+        if(m.find()){
+            return new Pair<>(m.group("domain"), m.group("domainVersion"));
+        }
+        return null;
+    }
+
+    public static String getSchemaVersionFromClassName(String className, boolean printDevVersion) {
         if (className != null) {
             logger.debug("@getSchemaVersionFromClassName " + PATTERN_ENERGYML_SCHEMA_VERSION + " == " + className);
             Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(className);
             if(pkgMatch.find()) {
-                return (pkgMatch.group("versionNum") + (pkgMatch.group("dev") != null ? pkgMatch.group("dev"): "")).replace("_", ".");
+                return (pkgMatch.group("versionNum") + (pkgMatch.group("dev") != null  && printDevVersion? pkgMatch.group("dev"): "")).replace("_", ".");
             }
         }
         logger.error("@getSchemaVersionFromClassName error generating schema version for " + className);
         return null;
     }
 
-    public static String getSchemaVersion(Object obj) {
+    public static String getSchemaVersion(Object obj, boolean printDevVersion) {
         if (obj != null) {
-            return getSchemaVersionFromClassName(obj.getClass().getName());
+            if(obj instanceof String){
+                return getSchemaVersionFromClassName((String) obj, printDevVersion);
+            }else{
+                return getSchemaVersionFromClassName(obj.getClass().getName(), printDevVersion);
+            }
         }
-        logger.error("@getSchemaVersion error generating schema version for " + obj);
+        logger.error("@getSchemaVersion error generating schema version for null object");
         return null;
     }
 
+    /**
+     * Takes a schema version like "Resqml v2.2", "v2.2", "resqml2.2" etc. and normalize it like : "2.2".
+     * For dev version of a package, the result will be like : "2.2dev3"
+     * @param schemaVersion a non normalize schema version.
+     * @return a normalizes schema version.
+     */
     public static String reformatSchemaVersion(String schemaVersion) {
         if (schemaVersion != null) {
             Matcher pkgMatch = PATTERN_ENERGYML_SCHEMA_VERSION.matcher(schemaVersion);
@@ -548,19 +583,35 @@ public class EPCGenericManager {
         return null;
     }
 
-    public static String getPackageIdentifierFromClassName(String className){
+    public static String getPackageDomain(Object obj){
+        if (obj != null) {
+            if(obj instanceof String){
+                return getPackageDomain_fromClassName((String) obj);
+            }else{
+                return getPackageDomain_fromClassName(obj.getClass().getName());
+            }
+        }
+        logger.error("@getPackageDomain error generating object content Type for null object ");
+        return "";
+    }
+
+    public static String getPackageDomain_fromClassName(String className){
         Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(className);
         if(pkgMatch.find()) {
-            String pkgId = pkgMatch.group("name");
-            return pkgId.compareToIgnoreCase("common") == 0 ? "eml" : pkgId;
+            String domain = pkgMatch.group("domain");
+            return domain.compareToIgnoreCase("common") == 0 ? "eml" : domain;
         }
         return "###error_unkown_object_" + className + "###";
     }
 
-    public static String getPackageIdentifier_withVersionForETP(Object obj, int minVersionDigit, int maxVersionDigit){
-        return getPackageIdentifierFromClassName_withVersionForETP(obj.getClass().getName(), minVersionDigit, maxVersionDigit);
+    public static String getPackageDomain_withVersionForETP(Object obj, int minVersionDigit, int maxVersionDigit, boolean printDevVersion){
+        if(obj instanceof String){
+            return getPackageDomain_withVersionForETP_fromClassName((String) obj, minVersionDigit, maxVersionDigit, printDevVersion);
+        }else {
+            return getPackageDomain_withVersionForETP_fromClassName(obj.getClass().getName(), minVersionDigit, maxVersionDigit, printDevVersion);
+        }
     }
-    public static String getPackageIdentifierFromClassName_withVersionForETP(String className, int minVersionDigit, int maxVersionDigit){
+    public static String getPackageDomain_withVersionForETP_fromClassName(String className, int minVersionDigit, int maxVersionDigit, boolean printDevVersion){
         assert minVersionDigit <= maxVersionDigit;
 
         Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(className);
@@ -570,26 +621,55 @@ public class EPCGenericManager {
             while (version.length() < minVersionDigit){
                 version.append("0");
             }
-            return getPackageIdentifierFromClassName(className) + version.substring(0, Math.min(version.length(), maxVersionDigit));
+            version = new StringBuilder(version.substring(0, Math.min(version.length(), maxVersionDigit)));
+            if(printDevVersion) {
+                version.append((pkgMatch.group("dev") != null ? pkgMatch.group("dev") : ""));
+            }
+            return getPackageDomain_fromClassName(className) + version;
         }
         return "###error_unkown_object_" + className + "###";
     }
 
-    public static String getObjectContentType(Object obj){
+    public static String getObjectContentType(Object obj, boolean printDevVersion){
         if (obj != null) {
-            return "application/x-" + getPackageIdentifierFromClassName(obj.getClass().getName())
-                    +"+xml;version=" + getSchemaVersion(obj) + ";type="
-                    + getObjectTypeForFilePath(obj);
+            if(obj instanceof String){
+                return getObjectContentType_fromClassName((String) obj, printDevVersion);
+            }else{
+                return getObjectContentType_fromClassName(obj.getClass().getName(), printDevVersion);
+            }
         }
-        logger.error("@getObjectContentType error generating object content Type for object " + obj);
+        logger.error("@getObjectContentType error generating object content Type for null object ");
         return "";
     }
 
-    public static String getObjectQualifiedType(Object obj) {
-        if (obj != null) {
-            return getPackageIdentifier_withVersionForETP(obj, 2, 2) + "." + getObjectTypeForFilePath(obj);
+    public static String getObjectContentType_fromClassName(String className, boolean printDevVersion){
+        if (className != null) {
+            return "application/x-" + getPackageDomain_fromClassName(className)
+                    +"+xml;version=" + getSchemaVersionFromClassName(className, printDevVersion) + ";type="
+                    + getObjectTypeForFilePath_fromClassName(className);
         }
-        logger.error("@getObjectQualifiedType error generating object qualified Type for object " + obj);
+        logger.error("@getObjectContentType error generating object content Type for null object ");
+        return "";
+    }
+
+    public static String getObjectQualifiedType(Object obj, boolean printDevVersion) {
+        if (obj != null) {
+            if(obj instanceof String){
+                return getObjectQualifiedType_fromClassName((String) obj, printDevVersion);
+            }else{
+                return getObjectQualifiedType_fromClassName(obj.getClass().getName(), printDevVersion);
+            }
+
+        }
+        logger.error("@getObjectQualifiedType error generating object qualified Type for null object ");
+        return "";
+    }
+
+    public static String getObjectQualifiedType_fromClassName(String className, boolean printDevVersion) {
+        if (className != null) {
+            return getPackageDomain_withVersionForETP_fromClassName(className, 2, 2, printDevVersion) + "." + getObjectTypeForFilePath_fromClassName(className);
+        }
+        logger.error("@getObjectQualifiedType error generating object qualified Type for null object ");
         return "";
     }
 
@@ -599,7 +679,7 @@ public class EPCGenericManager {
 
     public static String getObjectTypeForFilePath_fromClassName(String className) {
         String objType = className.substring(className.lastIndexOf(".") + 1);
-        String schemaVersion = getSchemaVersionFromClassName(className);
+        String schemaVersion = getSchemaVersionFromClassName(className, false);
         assert schemaVersion != null;
         if (schemaVersion.startsWith("2.0") && objType.startsWith("Obj")) {
             objType = objType.replace("Obj", "obj_");

@@ -16,7 +16,6 @@ limitations under the License.
 package com.geosiris.energyml.utils;
 
 import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.JAXBException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
