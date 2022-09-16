@@ -53,25 +53,37 @@ public class EPCPackage {
      */
     protected final String version;
     protected final String versionNum;
+    protected final String devVersionNum;
     protected final String packageName;
     protected final String packagePath;
 
 
     public EPCPackage(String pkgPath, String xsdMappingFilePath) throws EPCPackageInitializationException {
+        this(pkgPath, xsdMappingFilePath, Thread.currentThread().getContextClassLoader());
+    }
+
+    public EPCPackage(String pkgPath, String xsdMappingFilePath, final ClassLoader classLoader) throws EPCPackageInitializationException {
+        String devVersionNum1;
         this.packagePath = pkgPath;
 
         Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(pkgPath);
         if(pkgMatch.find()){
             this.name = pkgMatch.group("name");
-            this.version = pkgMatch.group("version");
+            this.version = (pkgMatch.group("versionNum") + (pkgMatch.group("dev") != null ? pkgMatch.group("dev"): "")).replace("_", ".");
             this.packageName = pkgMatch.group("packageName");
-            this.versionNum = (pkgMatch.group("versionNum") + (pkgMatch.group("dev") != null ? pkgMatch.group("dev"): "")).replace("_", ".");
+            this.versionNum = pkgMatch.group("versionNum").replace("_", ".");
+            try {
+                devVersionNum1 = pkgMatch.group("devNum").replace("_", ".");
+            }catch (Exception ignore){
+                devVersionNum1 = null;
+            }
         }else{
             throw new EPCPackageInitializationException(pkgPath);
         }
 
-        this.jaxbContext = ContextBuilder.createContext(packagePath);
-        this.pkgClasses = new ArrayList<>(ContextBuilder.getClasses(this.packagePath));
+        this.devVersionNum = devVersionNum1;
+        this.jaxbContext = ContextBuilder.createContext(packagePath, classLoader);
+        this.pkgClasses = new ArrayList<>(ContextBuilder.getClasses(this.packagePath, classLoader));
 
         SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
         try{
@@ -79,6 +91,14 @@ public class EPCPackage {
         }catch (Exception e){
             logger.error("ERR: no xsd schema for package '" + packagePath + "' at path " + xsdMappingFilePath);
         }
+    }
+
+    public boolean isDevVersion(){
+        return devVersionNum != null;
+    }
+
+    public boolean isReleaseVersion(){
+        return ! isDevVersion();
     }
 
     public List<Class<?>> getRootsElementsClasses() {
@@ -131,11 +151,11 @@ public class EPCPackage {
         return null;
     }
 
-    public JAXBElement<?> parseXmlContent(String xmlContent) {
+    public JAXBElement<?> parseXmlContent(String xmlContent, boolean alternateDevVersionExists) {
         long ticBegin = System.currentTimeMillis();
 
         logger.debug(">Trying to parse from package '" + this.packagePath);
-        JAXBElement<?> result =  parseXmlFromContext(jaxbContext, xmlContent, true, xsdSchema);
+        JAXBElement<?> result =  parseXmlFromContext(xmlContent, true, alternateDevVersionExists, xsdSchema);
         if (result != null) {
             logger.debug("Success reading with '" + this.packagePath + "' object class : "
                     + result.getValue().getClass().getName());
@@ -148,20 +168,21 @@ public class EPCPackage {
         return result;
     }
 
-    private JAXBElement<?> parseXmlFromContext(JAXBContext context, String xmlContent,
+    private JAXBElement<?> parseXmlFromContext(String xmlContent,
                                                boolean tryWithoutNamespaceIfFail,
+                                               boolean testRemarshalling, // test to marshall/unmarshall after first unmarshall
+                                                                            // to verify if everything has been read correctly
                                                Schema schema) {
-        Unmarshaller unmarshaller;
         ValidationEventCollector vec = null;
 
         try {
             long ticCreateUnmarshaller_b = System.currentTimeMillis();
-            unmarshaller = context.createUnmarshaller();
+            Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
             if(schema != null)
                 unmarshaller.setSchema(schema);
 
             long ticCreateUnmarshaller_e = System.currentTimeMillis();
-            logger.debug("\t@parseXmlFromContext : Creating unmarshaller " + (ticCreateUnmarshaller_e - ticCreateUnmarshaller_b) / 1000.0 + "s");
+            logger.debug("\t@parseXmlFromContext (" + this.packagePath + ": Creating unmarshaller " + (ticCreateUnmarshaller_e - ticCreateUnmarshaller_b) / 1000.0 + "s");
 
             vec = new ValidationEventCollector();
             unmarshaller.setEventHandler(vec);
@@ -180,51 +201,52 @@ public class EPCPackage {
                 logger.debug("events found");
                 return null;
             } else if (result != null) {
+                if(testRemarshalling) {
+                    logger.debug("no events found");
+                    long ticMarshall_b = System.currentTimeMillis();
+                    String xmlNewContent = marshal(result.getValue());
+                    long ticMarshall_e = System.currentTimeMillis();
+                    logger.debug("\t@parseXmlFromContext : Marshalling took " + (ticMarshall_e - ticMarshall_b) / 1000.0 + "s");
 
-                logger.debug("no events found");
-                long ticMarshall_b = System.currentTimeMillis();
-                String xmlNewContent = marshal(result.getValue());
-                long ticMarshall_e = System.currentTimeMillis();
-                logger.debug("\t@parseXmlFromContext : Marshalling took " + (ticMarshall_e - ticMarshall_b) / 1000.0 + "s");
+                    long ticCountingChevron_b = System.currentTimeMillis();
+                    int countOld = 0;
+                    int countNew = 0;
+                    for (int i = 0; i < xmlNewContent.length(); i++)
+                        if (xmlNewContent.charAt(i) == '<')
+                            if (xmlNewContent.charAt(i + 1) != '?') // On ne compte pas le <?xml du dÃ©part qui n'est pas
+                                // toujours la
+                                countNew++;
 
-                long ticCountingChevron_b = System.currentTimeMillis();
-                int countOld = 0;
-                int countNew = 0;
-                for (int i = 0; i < xmlNewContent.length(); i++)
-                    if (xmlNewContent.charAt(i) == '<')
-                        if (xmlNewContent.charAt(i + 1) != '?') // On ne compte pas le <?xml du dÃ©part qui n'est pas
-                            // toujours la
-                            countNew++;
+                    for (int i = 0; i < xmlContent.length(); i++)
+                        if (xmlContent.charAt(i) == '<')
+                            if (xmlContent.charAt(i + 1) != '?') // On ne compte pas le <?xml du dÃ©part qui n'est pas
+                                // toujours la
+                                countOld++;
 
-                for (int i = 0; i < xmlContent.length(); i++)
-                    if (xmlContent.charAt(i) == '<')
-                        if (xmlContent.charAt(i + 1) != '?') // On ne compte pas le <?xml du dÃ©part qui n'est pas
-                            // toujours la
-                            countOld++;
+                    long ticCountingChevron_e = System.currentTimeMillis();
 
-                long ticCountingChevron_e = System.currentTimeMillis();
+                    logger.debug("\t@parseXmlFromContext : Counting chevron cost " + (ticCountingChevron_e - ticCountingChevron_b) / 1000.0 + "s");
 
-                logger.debug("\t@parseXmlFromContext : Counting chevron cost " + (ticCountingChevron_e - ticCountingChevron_b) / 1000.0 + "s");
+                    if (countOld > countNew) {
+                        logger.error("Error reading object class : " + result.getValue().getClass().getName()
+                                + " old count of '<' : " + countOld + " new is : " + countNew);
+                        if (tryWithoutNamespaceIfFail) {
 
-                if (countOld > countNew) {
-                    logger.error("Error reading object class : " + result.getValue().getClass().getName()
-                            + " old count of '<' : " + countOld + " new is : " + countNew);
-                    if (tryWithoutNamespaceIfFail) {
-
-                        logger.debug("Trying without namespace");
-                        String contentNoNamespace = xmlContent.replaceAll("<(/?)[a-zA-Z0-9_]+:([\\w\\d_]+)", "<$1$2");
-                        return parseXmlFromContext(context, contentNoNamespace, false, schema);
-                    } else {
-                        return null;
+                            logger.debug("Trying without namespace");
+                            String contentNoNamespace = xmlContent.replaceAll("<(/?)[a-zA-Z0-9_]+:([\\w\\d_]+)", "<$1$2");
+                            return parseXmlFromContext(contentNoNamespace, false, testRemarshalling, schema);
+                        } else {
+                            return null;
+                        }
                     }
                 }
                 return result;
             }
         } catch (Exception e) {
             if(schema != null){
-                logger.error(e.getCause() + " " + e.getMessage());
+                logger.debug(e.getCause() + " " + e.getMessage());
                 // try to parse without schema
-                return parseXmlFromContext(context, xmlContent, tryWithoutNamespaceIfFail, null);
+                return parseXmlFromContext(xmlContent, tryWithoutNamespaceIfFail, testRemarshalling, null);
             }
             logger.debug(e.getMessage(), e);
             logger.debug("File not read : ");
@@ -281,34 +303,39 @@ public class EPCPackage {
                                 class22);
                         return (JAXBElement<?>) create.invoke(factory, energymlObject);
                     } catch (Exception e2) {
-                        // logger.error(e.getMessage(), e);
+                        logger.error(e.getMessage(), e);
+                        logger.error(e2.getMessage(), e2);
                     }
                 }
             }
-            logger.error(e.getMessage(), e);
         }
         return null;
     }
 
     public boolean validate(Object obj) throws JAXBException {
-        Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-        jaxbUnmarshaller.setSchema(xsdSchema);
+        if(obj != null) {
+            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            jaxbUnmarshaller.setSchema(xsdSchema);
 
-        String xmlObj = marshal(obj);
-        ByteArrayInputStream bais = new ByteArrayInputStream(xmlObj.getBytes(StandardCharsets.UTF_8));
+            String xmlObj = marshal(obj);
+            ByteArrayInputStream bais = new ByteArrayInputStream(xmlObj.getBytes(StandardCharsets.UTF_8));
 
-        jaxbUnmarshaller.unmarshal(bais);
-        return true;
+            jaxbUnmarshaller.unmarshal(bais);
+            return true;
+        }
+        return false;
     }
 
     public String marshal(Object obj) {
-        try {
-            OutputStream os = new ByteArrayOutputStream();
-            marshal(obj, os);
-            return os.toString();
-        }catch (Exception e){
-            logger.error("Error marshalling object " + obj);
-            logger.debug(e.getMessage(), e);
+        if(obj != null) {
+            try {
+                OutputStream os = new ByteArrayOutputStream();
+                marshal(obj, os);
+                return os.toString();
+            } catch (Exception e) {
+                logger.error("Error marshalling object " + obj);
+                logger.debug(e.getMessage(), e);
+            }
         }
         return null;
     }
@@ -343,5 +370,9 @@ public class EPCPackage {
 
     public List<Class<?>> getPkgClasses() {
         return pkgClasses;
+    }
+
+    public String getDevVersionNum() {
+        return devVersionNum;
     }
 }

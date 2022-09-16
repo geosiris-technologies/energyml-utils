@@ -46,16 +46,16 @@ import java.util.zip.ZipOutputStream;
 public class EPCGenericManager {
     public static Logger logger = LogManager.getLogger(EPCGenericManager.class);
 
-	public static final String REGEX_ENERGYML_CLASS_NAME = "(?<prefix>[\\w\\.]+)\\.(?<packageName>(?<name>"
-			+ ContextBuilder.getPkgNamePattern()
-			+ ")(?<version>(?<devPrefix>_(?<dev>dev[\\d]+)x_)?(?<versionNum>([\\d]+[\\._])*\\d)))(\\.(?<className>\\w+))?";
+    public static final String REGEX_ENERGYML_CLASS_NAME = "(?<prefix>[\\w\\.]+)\\.(?<packageName>(?<name>"
+            + ContextBuilder.getPkgNamePattern()
+            + ")(?<version>(?<devPrefix>_(?<dev>dev(?<devNum>[\\d]+))x_)?(?<versionNum>([\\d]+[\\._])*\\d)))(\\.(?<className>\\w+))?";
 
-	public static final String REGEX_ENERGYML_SCHEMA_VERSION ="(?<name>"
-			+ ContextBuilder.getPkgNamePattern()
-			+ ")?\\s*v?(?<versionNum>([\\d]+[\\._])*\\d)\\s*(?<dev>dev\\s*[\\d]+)?\\s*$";
+    public static final String REGEX_ENERGYML_SCHEMA_VERSION ="(?<name>"
+            + ContextBuilder.getPkgNamePattern()
+            + ")?\\s*v?(?<versionNum>([\\d]+[\\._])*\\d)\\s*(?<dev>dev\\s*(?<devNum>[\\d]+))?\\s*$";
 
     public static final Pattern PATTERN_ENERGYML_CLASS_NAME = Pattern.compile(REGEX_ENERGYML_CLASS_NAME);
-	public static final Pattern PATTERN_ENERGYML_SCHEMA_VERSION = Pattern.compile(REGEX_ENERGYML_SCHEMA_VERSION, Pattern.CASE_INSENSITIVE);
+    public static final Pattern PATTERN_ENERGYML_SCHEMA_VERSION = Pattern.compile(REGEX_ENERGYML_SCHEMA_VERSION, Pattern.CASE_INSENSITIVE);
     private final static Pattern PATTERN_CONTENT_TYPE_TYPE = Pattern.compile("type=([\\w]+)");
 
     public static List<Object> getAccessibleDORsSimple(Object resqmlCurrentObj, Collection<Object> resqmlObjList) {
@@ -336,7 +336,7 @@ public class EPCGenericManager {
 
     public static String getEPCObjectFileName(Object ao){
         if(ao != null)
-            return ao.getClass().getSimpleName() + "_" + ObjectController.getObjectAttributeValue(ao, "uuid") + ".xml";
+            return getObjectTypeForFilePath(ao) + "_" + ObjectController.getObjectAttributeValue(ao, "uuid") + ".xml";
         return "";
     }
 
@@ -419,14 +419,14 @@ public class EPCGenericManager {
             for(String dest_rel : dest){
                 Relationship rel = new Relationship();
                 rel.setType(EPCRelsRelationshipType.DestinationObject.getType());
-                rel.setId("_" + genPathInEPC(workspace.get(dest_rel), exportVersion));
+                rel.setId(uuid + "_" + genPathInEPC(workspace.get(dest_rel), exportVersion));
                 rel.setTarget(genPathInEPC(workspace.get(dest_rel), exportVersion));
                 rels.getRelationship().add(rel);
             }
             for(String source_rel : source){
                 Relationship rel = new Relationship();
                 rel.setType(EPCRelsRelationshipType.SourceObject.getType());
-                rel.setId("_" + genPathInEPC(workspace.get(source_rel), exportVersion));
+                rel.setId(uuid + "_" + genPathInEPC(workspace.get(source_rel), exportVersion));
                 rel.setTarget(genPathInEPC(workspace.get(source_rel), exportVersion));
                 rels.getRelationship().add(rel);
             }
@@ -442,7 +442,7 @@ public class EPCGenericManager {
                         List<Relationship> h5rels = externalPartRels.getRelationship().stream().filter((oldRel) -> oldRel.getId().toLowerCase().contains("hdf5file")).collect(Collectors.toList());
                         for (Relationship h5Rel : h5rels) {
                             Relationship rel = new Relationship();
-                            rel.setId("Hdf5File");
+                            rel.setId(h5Rel.getId());
 //							rel.setTarget(nameInPartRef);
                             rel.setTarget(h5Rel.getTarget());
                             rel.setType(EPCRelsRelationshipType.ExternalResource.getType());
@@ -501,7 +501,6 @@ public class EPCGenericManager {
         marshal(OPCCorePackage.JAXB_CONTEXT, null, coreProperties, out);
         out.closeEntry();
 
-
         // ContentTypeFile
         ZipEntry ze_contentType = new ZipEntry(OPCContentType.genContentTypePath());
         out.putNextEntry(ze_contentType);
@@ -559,7 +558,7 @@ public class EPCGenericManager {
     }
 
     public static String getPackageIdentifier_withVersionForETP(Object obj, int minVersionDigit, int maxVersionDigit){
-       return getPackageIdentifierFromClassName_withVersionForETP(obj.getClass().getName(), minVersionDigit, maxVersionDigit);
+        return getPackageIdentifierFromClassName_withVersionForETP(obj.getClass().getName(), minVersionDigit, maxVersionDigit);
     }
     public static String getPackageIdentifierFromClassName_withVersionForETP(String className, int minVersionDigit, int maxVersionDigit){
         assert minVersionDigit <= maxVersionDigit;
@@ -578,12 +577,9 @@ public class EPCGenericManager {
 
     public static String getObjectContentType(Object obj){
         if (obj != null) {
-            Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(obj.getClass().getName());
-            if(pkgMatch.find()) {
-                return "application/x-" + getPackageIdentifierFromClassName(obj.getClass().getName())
-                        +"+xml;version=" + getSchemaVersion(obj) + ";type="
-                        + pkgMatch.group("className") + "";
-            }
+            return "application/x-" + getPackageIdentifierFromClassName(obj.getClass().getName())
+                    +"+xml;version=" + getSchemaVersion(obj) + ";type="
+                    + getObjectTypeForFilePath(obj);
         }
         logger.error("@getObjectContentType error generating object content Type for object " + obj);
         return "";
@@ -598,8 +594,12 @@ public class EPCGenericManager {
     }
 
     public static String getObjectTypeForFilePath(Object obj) {
-        String objType = obj.getClass().getSimpleName();
-        String schemaVersion = getSchemaVersion(obj);
+        return getObjectTypeForFilePath_fromClassName(obj.getClass().getName());
+    }
+
+    public static String getObjectTypeForFilePath_fromClassName(String className) {
+        String objType = className.substring(className.lastIndexOf(".") + 1);
+        String schemaVersion = getSchemaVersionFromClassName(className);
         assert schemaVersion != null;
         if (schemaVersion.startsWith("2.0") && objType.startsWith("Obj")) {
             objType = objType.replace("Obj", "obj_");

@@ -24,14 +24,16 @@ import energyml.resqml2_2.TriangulatedSetRepresentation;
 import jdk.jshell.execution.Util;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Modifier;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 
 public class EPCGenericManagerTest {
     private final String cName_tsr201 = "energyml.resqml2_0_1.TriangulatedSetRepresentation";
     private final String cName_tsr22 = "energyml.resqml2_2.TriangulatedSetRepresentation";
-    private final String cName_tsr22dev3 = "energyml.resqml_dev3x_2_2.Obj_TriangulatedSetRepresentation";
+    private final String cName_tsr22dev3 = "energyml.resqml_dev3x_2_2.ObjTriangulatedSetRepresentation";
     private final String cName_act23 = "energyml.common2_3.Activity";
     private final String cName_notExist0 = "energyml.unkownpkg2_3.Activity";
 
@@ -164,6 +166,13 @@ public class EPCGenericManagerTest {
         assert EPCGenericManager.getPackageIdentifierFromClassName_withVersionForETP(cName_tsr22dev3, 2, 3).compareTo("resqml22") == 0;
     }
 
+
+    @Test
+    void test_getObjectTypeForFilePath_fromClassName(){
+        assert EPCGenericManager.getObjectTypeForFilePath(TR_TEST).compareTo("TriangulatedSetRepresentation") == 0;
+        assert EPCGenericManager.getObjectTypeForFilePath_fromClassName(cName_tsr22dev3).compareTo("obj_TriangulatedSetRepresentation") == 0;
+    }
+
     @Test
     void test_get_qualified_type(){
         assert EPCGenericManager.getObjectQualifiedType(TR_TEST).compareTo("resqml22.TriangulatedSetRepresentation") == 0;
@@ -191,7 +200,8 @@ public class EPCGenericManagerTest {
 
     public static void main(String[] argv){
         EPCPackageManager manager = new EPCPackageManager("energyml", "", "", "");
-        String tr0 = Utils.readFileOrRessource("C:/Users/Cryptaro/Downloads/TriangulatedSetRepresentation_616f910c-b3f2-4910-978b-146c21762d12.xml");
-        System.out.println(tr0);
+//        String tr0 = Utils.readFileOrRessource("C:/Users/Cryptaro/Downloads/TriangulatedSetRepresentation_616f910c-b3f2-4910-978b-146c21762d12.xml");
+//        System.out.println(tr0);
+//        manager.getClasses().stream().filter(cl -> cl != null && !Modifier.isAbstract(cl.getModifiers())).collect(Collectors.toList()).forEach(x -> System.out.println(x));
     }
 }

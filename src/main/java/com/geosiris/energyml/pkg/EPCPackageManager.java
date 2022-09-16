@@ -79,10 +79,16 @@ public class EPCPackageManager {
             this.accessibleDORFilePath = "";
         }
         this.PKG_LIST = pkgList;
+        logger.info("EPCPackageManager initialized found packages :");
+        for(EPCPackage pkg : pkgList){
+            logger.info(pkg.getPackageName() + " nb class found " + pkg.getPkgClasses().size());
+        }
     }
 
     public static List<EPCPackage> initPkgList(String energymlPkgPrefix, String xsdMappingFilePath) {
         Map<String, String> xsdMapping = Utils.readJsonFileOrRessource(xsdMappingFilePath, HashMap.class);
+
+		final ClassLoader sysLoader = Thread.currentThread().getContextClassLoader();
 
         return ContextBuilder.findAllEnergymlPackages(energymlPkgPrefix).parallelStream().map(
                 (pkgPath) -> {
@@ -94,7 +100,7 @@ public class EPCPackageManager {
                                 + "' for package '" + pkgPath + "'");
                     }
                     try {
-                        return new EPCPackage(pkgPath, xsdPath);
+                        return new EPCPackage(pkgPath, xsdPath, sysLoader);
                     } catch (EPCPackageInitializationException e) {
                         logger.error(
                                 "@initPkgList: error during package instanciation for package path '" + pkgPath + "'");
@@ -131,6 +137,18 @@ public class EPCPackageManager {
         return null;
     }
 
+    public Boolean hasDevVersion(EPCPackage refPkg) {
+            for (EPCPackage pkg : PKG_LIST) {
+                if (pkg.getName().compareToIgnoreCase(refPkg.getName()) == 0
+                        && pkg.getPackagePath().compareTo(refPkg.getPackagePath()) !=0
+                        && pkg.getVersionNum().compareTo(refPkg.getVersionNum()) == 0
+                        && pkg.isDevVersion()) {
+                    return true;
+                }
+            }
+        return false;
+    }
+
     public List<String> getPackagesPath() {
         return PKG_LIST.stream().map(EPCPackage::getPackagePath).collect(Collectors.toList());
     }
@@ -140,12 +158,18 @@ public class EPCPackageManager {
         Matcher matcherXMLSchemaV = PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE.matcher(xmlContent);
         if (matcherXMLSchemaV.find()) {
             schemaVersionFound = EPCGenericManager.reformatSchemaVersion(matcherXMLSchemaV.group("schemaVersion"));
+            logger.info("SchemaVersionFound " + schemaVersionFound);
         }
         for (EPCPackage pkg : PKG_LIST) {
             if (schemaVersionFound == null || pkg.getVersionNum().compareToIgnoreCase(schemaVersionFound) == 0) {
-                JAXBElement<?> obj = pkg.parseXmlContent(xmlContent);
-                if (obj != null) {
-                    return obj;
+                logger.info("Trying to read with " + pkg.getPackagePath());
+                try {
+                    JAXBElement<?> obj = pkg.parseXmlContent(xmlContent, hasDevVersion(pkg));
+                    if (obj != null) {
+                        return obj;
+                    }
+                }catch (Exception e){
+                    logger.debug(e.getMessage(), e);
                 }
             }
         }
@@ -153,9 +177,13 @@ public class EPCPackageManager {
         if (schemaVersionFound != null) {
             for (EPCPackage pkg : PKG_LIST) {
                 if (pkg.getVersionNum().compareToIgnoreCase(schemaVersionFound) != 0) {
-                    JAXBElement<?> obj = pkg.parseXmlContent(xmlContent);
-                    if (obj != null) {
-                        return obj;
+                    try {
+                        JAXBElement<?> obj = pkg.parseXmlContent(xmlContent, true);
+                        if (obj != null) {
+                            return obj;
+                        }
+                    }catch (Exception e){
+                        logger.debug(e.getMessage(), e);
                     }
                 }
             }

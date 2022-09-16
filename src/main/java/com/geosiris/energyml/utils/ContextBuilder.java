@@ -47,16 +47,6 @@ public class ContextBuilder {
 		return res.toString();
 	}
 
-	public static JAXBContext getContext(String pkg) {
-		try {
-			return JAXBContext.newInstance(pkg);
-		} catch (JAXBException e) {
-			logger.debug(e.getMessage(), e);
-		}
-		logger.error("[ENERGYML] #Err# Context : " + pkg + " not created !");
-		return null;
-	}
-
 	public static List<String> findAllEnergymlPackages(String pkgPrefix){
 		List<String> pkgs = new ArrayList<>();
 		for(String pkgName: energymlPkgNameList){
@@ -65,21 +55,8 @@ public class ContextBuilder {
 		return pkgs;
 	}
 
-	public static Map<String, List<Class<?>>> getClassesForVersion(final String packageNamePrefix) {
-		Map<String, List<Class<?>>> result = new HashMap<>();
-		List<String> versions = getPackagesVersions(packageNamePrefix);
-		if(versions.size()<=0)
-			versions.add("");
-		for(String version : versions){
-			String pkg = packageNamePrefix + version.replace(".", "_");
-			result.put(pkg, new ArrayList<>(getClasses(pkg)));
-		}
-		return result;
-	}
-
-	public static Set<Class<?>> getClasses(final String pkg) {
+	public static Set<Class<?>> getClasses(final String pkg, ClassLoader sysLoader) {
 		Set<Class<?>> result = new HashSet<>();
-		ClassLoader sysLoader = Thread.currentThread().getContextClassLoader();
 		String pkgPath = pkg.replace(".", "/");
 		try {
 			Enumeration<URL> resources = sysLoader.getResources(pkgPath);
@@ -146,12 +123,12 @@ public class ContextBuilder {
 		return packagePath + version.replace(".", "_");
 	}
 
-	public static JAXBContext createContext(String packagePath) {
+	public static JAXBContext createContext(String packagePath, final ClassLoader classLoader) {
 		JAXBContext context = null;
 
 		logger.debug("trying create jaxb context : " + packagePath);
 		try {
-			context = JAXBContext.newInstance(packagePath);
+			context = JAXBContext.newInstance(packagePath, classLoader);
 			logger.debug("jaxb context created for " + packagePath);
 		} catch (Exception e) {
 			logger.error("No context found for " + packagePath);
@@ -160,13 +137,17 @@ public class ContextBuilder {
 		return context;
 	}
 
+	public static JAXBContext createContext(String packagePath) {
+		return createContext(packagePath, Thread.currentThread().getContextClassLoader());
+	}
+
 	public static Map<String, JAXBContext> createAllContext_Filter(String packagePath, List<String> excludePkgList) {
 		try {
 			final List<String> pkgVersion = getPackagesVersions(packagePath);
 			logger.info("Found pkg version for : " + packagePath + " : " + pkgVersion);
 			if (pkgVersion.size() <= 0) {
 				try {
-					JAXBContext context = createContext(packagePath);
+					JAXBContext context = createContext(packagePath, Thread.currentThread().getContextClassLoader());
 					if (context != null) {
 						Map<String, JAXBContext> mapResult = new HashMap<>();
 						mapResult.put(packagePath, context);
@@ -191,7 +172,7 @@ public class ContextBuilder {
 
 					if (allowed) {
 						try {
-							JAXBContext context = createContext(pkgPath);
+							JAXBContext context = createContext(pkgPath, Thread.currentThread().getContextClassLoader());
 							if (context != null) {
 								Map<String, JAXBContext> mapResult = new HashMap<>();
 								mapResult.put(pkgPath, context);
