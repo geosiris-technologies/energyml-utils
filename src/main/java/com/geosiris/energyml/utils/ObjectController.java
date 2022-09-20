@@ -247,6 +247,62 @@ public class ObjectController {
     }
 
     /**
+     *
+     * @param objClass starting class
+     * @param fieldPath a dotted path. Write [] for a list or a map index.
+     * @param caseSensitive test the case of the fields name
+     * @return the field at path @{fieldPath}
+     */
+    public static Field getField(Class<?> objClass, String fieldPath, boolean caseSensitive){
+        String fieldName = fieldPath;
+        if(fieldName.contains(".")){
+            fieldName = fieldPath.substring(0, fieldName.indexOf("."));
+        }
+        for(Field f : getAllFields(objClass)){
+            if((caseSensitive && f.getName().compareTo(fieldName) == 0)
+             || f.getName().compareToIgnoreCase(fieldName) == 0){
+                if(fieldName.length() == fieldPath.length()){
+                    return f;
+                }else{
+                    // On passe au suivant.
+                    String nextField = fieldPath.substring(fieldName.length() + 1);
+                    if(nextField.startsWith("[].")){
+
+                    }else{
+                        return getField(f.getType(), nextField, caseSensitive);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+     public static Map<String, Field> getAllAccessibleFields_Deep(Class<?> objClass){
+        return getAllAccessibleFields_Deep(objClass, null, null);
+    }
+
+    private static Map<String, Field> getAllAccessibleFields_Deep(Class<?> objClass, Class<?> parentClass, Field thisField){
+        Map<String, Field> res = new HashMap<>();
+// TODO:
+        for(Method m : objClass.getMethods()){
+            if(m.getName().compareTo("get") == 0){
+                if(m.getParameters().length == 1){
+                    try {
+                        // try to add field for list or map
+//                        m.getReturnType().isAnonymousClass()
+                    }catch (Exception e){
+                        logger.error(e.getMessage(), e);
+                    }
+                }
+            }else if(m.getName().startsWith("get")){
+
+            }
+        }
+
+        return res;
+    }
+
+    /**
      * Get the @{@link Method} to edit an attribute called @paramName.
      * /!\ The attribute must be directly accessible in the class of the object. (It can not be an attribute of an attribute with a dot-syntax)
      * /!\ The getter method must follow java commonly used syntax : for an attribute called "myPersonal_attribute", the getter must be called :
