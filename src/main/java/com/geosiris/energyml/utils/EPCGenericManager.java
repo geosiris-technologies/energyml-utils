@@ -61,6 +61,7 @@ public class EPCGenericManager {
     public static final Pattern PATTERN_QUALIFIED_TYPE = Pattern.compile("(?<domain>[a-zA-Z]+)" + REGEX_DOMAIN_VERSION_FLAT + "\\.(?<type>[\\w_]+)");
 
     public static final Pattern PATTERN_UUID = Pattern.compile("(?<uuid>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
+    public static final Pattern PATTERN_PROJECT_VERSION = Pattern.compile("(?<n0>[\\d]+)(.(?<n1>[\\d]+)(.(?<n2>[\\d]+))?)?");
 
     public static final Pattern PATTERN_ENERGYML_CLASS_NAME = Pattern.compile(REGEX_ENERGYML_CLASS_NAME);
     public static final Pattern PATTERN_ENERGYML_SCHEMA_VERSION = Pattern.compile(REGEX_ENERGYML_SCHEMA_VERSION, Pattern.CASE_INSENSITIVE);
@@ -542,24 +543,40 @@ public class EPCGenericManager {
         return null;
     }
 
+    public static String getSchemaVersionFromClassName(String className) {
+        return getSchemaVersionFromClassName(className, false);
+    }
+
     public static String getSchemaVersionFromClassName(String className, boolean printDevVersion) {
+        return getSchemaVersionFromClassName(className, printDevVersion, 2);
+    }
+
+    public static String getSchemaVersionFromClassName(String className, boolean printDevVersion, int nbMaxVersionDigits) {
         if (className != null) {
             logger.debug("@getSchemaVersionFromClassName " + PATTERN_ENERGYML_SCHEMA_VERSION + " == " + className);
             Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(className);
             if(pkgMatch.find()) {
-                return (pkgMatch.group("versionNum") + (pkgMatch.group("dev") != null  && printDevVersion? pkgMatch.group("dev"): "")).replace("_", ".");
+                return (reshapeVersion(pkgMatch.group("versionNum"), nbMaxVersionDigits) + (pkgMatch.group("dev") != null  && printDevVersion? pkgMatch.group("dev"): "")).replace("_", ".");
             }
         }
         logger.error("@getSchemaVersionFromClassName error generating schema version for " + className);
         return null;
     }
 
+    public static String getSchemaVersion(Object obj) {
+        return getSchemaVersion(obj, false);
+    }
+
     public static String getSchemaVersion(Object obj, boolean printDevVersion) {
+        return getSchemaVersion(obj, printDevVersion, 2);
+    }
+
+    public static String getSchemaVersion(Object obj, boolean printDevVersion, int nbMaxVersionDigits) {
         if (obj != null) {
             if(obj instanceof String){
-                return getSchemaVersionFromClassName((String) obj, printDevVersion);
+                return getSchemaVersionFromClassName((String) obj, printDevVersion, nbMaxVersionDigits);
             }else{
-                return getSchemaVersionFromClassName(obj.getClass().getName(), printDevVersion);
+                return getSchemaVersionFromClassName(obj.getClass().getName(), printDevVersion, nbMaxVersionDigits);
             }
         }
         logger.error("@getSchemaVersion error generating schema version for null object");
@@ -612,7 +629,9 @@ public class EPCGenericManager {
         }
     }
     public static String getPackageDomain_withVersionForETP_fromClassName(String className, int minVersionDigit, int maxVersionDigit, boolean printDevVersion){
-        assert minVersionDigit <= maxVersionDigit;
+        if(maxVersionDigit<minVersionDigit){
+            maxVersionDigit = minVersionDigit;
+        }
 
         Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(className);
 
@@ -630,34 +649,56 @@ public class EPCGenericManager {
         return "###error_unkown_object_" + className + "###";
     }
 
+    public static String getObjectContentType(Object obj){
+        return getObjectContentType(obj, true);
+    }
+
     public static String getObjectContentType(Object obj, boolean printDevVersion){
+        return getObjectContentType(obj, printDevVersion, 2);
+    }
+
+    public static String getObjectContentType(Object obj, boolean printDevVersion, int nbMaxVersionDigits){
         if (obj != null) {
             if(obj instanceof String){
-                return getObjectContentType_fromClassName((String) obj, printDevVersion);
+                return getObjectContentType_fromClassName((String) obj, printDevVersion, nbMaxVersionDigits);
             }else{
-                return getObjectContentType_fromClassName(obj.getClass().getName(), printDevVersion);
+                return getObjectContentType_fromClassName(obj.getClass().getName(), printDevVersion, nbMaxVersionDigits);
             }
         }
         logger.error("@getObjectContentType error generating object content Type for null object ");
         return "";
     }
 
+    public static String getObjectContentType_fromClassName(String className){
+        return getObjectContentType_fromClassName(className, false);
+    }
     public static String getObjectContentType_fromClassName(String className, boolean printDevVersion){
+        return getObjectContentType_fromClassName(className, printDevVersion, 2);
+    }
+    public static String getObjectContentType_fromClassName(String className, boolean printDevVersion, int nbMaxVersionDigits){
         if (className != null) {
             return "application/x-" + getPackageDomain_fromClassName(className)
-                    +"+xml;version=" + getSchemaVersionFromClassName(className, printDevVersion) + ";type="
+                    +"+xml;version=" + getSchemaVersionFromClassName(className, printDevVersion, nbMaxVersionDigits) + ";type="
                     + getObjectTypeForFilePath_fromClassName(className);
         }
         logger.error("@getObjectContentType error generating object content Type for null object ");
         return "";
     }
 
+    public static String getObjectQualifiedType(Object obj) {
+        return getObjectQualifiedType(obj, false);
+    }
+
     public static String getObjectQualifiedType(Object obj, boolean printDevVersion) {
+        return getObjectQualifiedType(obj, printDevVersion, 2);
+    }
+
+    public static String getObjectQualifiedType(Object obj, boolean printDevVersion, int nbMaxVersionDigits) {
         if (obj != null) {
             if(obj instanceof String){
-                return getObjectQualifiedType_fromClassName((String) obj, printDevVersion);
+                return getObjectQualifiedType_fromClassName((String) obj, printDevVersion, nbMaxVersionDigits);
             }else{
-                return getObjectQualifiedType_fromClassName(obj.getClass().getName(), printDevVersion);
+                return getObjectQualifiedType_fromClassName(obj.getClass().getName(), printDevVersion, nbMaxVersionDigits);
             }
 
         }
@@ -665,9 +706,9 @@ public class EPCGenericManager {
         return "";
     }
 
-    public static String getObjectQualifiedType_fromClassName(String className, boolean printDevVersion) {
+    public static String getObjectQualifiedType_fromClassName(String className, boolean printDevVersion, int nbMaxVersionDigits) {
         if (className != null) {
-            return getPackageDomain_withVersionForETP_fromClassName(className, 2, 2, printDevVersion) + "." + getObjectTypeForFilePath_fromClassName(className);
+            return getPackageDomain_withVersionForETP_fromClassName(className, 2, nbMaxVersionDigits, printDevVersion) + "." + getObjectTypeForFilePath_fromClassName(className);
         }
         logger.error("@getObjectQualifiedType error generating object qualified Type for null object ");
         return "";
@@ -679,12 +720,37 @@ public class EPCGenericManager {
 
     public static String getObjectTypeForFilePath_fromClassName(String className) {
         String objType = className.substring(className.lastIndexOf(".") + 1);
-        String schemaVersion = getSchemaVersionFromClassName(className, false);
+        String schemaVersion = getSchemaVersionFromClassName(className);
         assert schemaVersion != null;
         if (schemaVersion.startsWith("2.0") && objType.startsWith("Obj")) {
             objType = objType.replace("Obj", "obj_");
         }
         objType = objType.replaceAll("(\\d+)D", "$1d");
         return objType;
+    }
+
+    /**
+     * Reshape a project version to have only specific number of digits. If 0 < nbDigit < 4 then the reshape is done,
+     * else, the original version is returned.
+     * Example : reshapeVersion("v2.0.1", 2) ==> "2.0" and reshapeVersion("version2.0.1.3.2.5", 4) ==> "version2.0.1.3.2.5"
+     * @param version
+     * @param nbDigit
+     * @return
+     */
+    public static String reshapeVersion(String version, int nbDigit){
+        Matcher m = PATTERN_PROJECT_VERSION.matcher(version);
+        if(m.find()) {
+            String n0 = m.group("n0");
+            String n1 = m.group("n1");
+            String n2 = m.group("n2");
+            if (nbDigit == 1) {
+                return n0;
+            } else if (nbDigit == 2) {
+                return n0 + (n1!=null? "." + n1 : "");
+            } else if (nbDigit == 3) {
+                return n0 + (n1!=null? "." + n1 + (n2!=null? "." + n2 : "") : "");
+            }
+        }
+        return version;
     }
 }

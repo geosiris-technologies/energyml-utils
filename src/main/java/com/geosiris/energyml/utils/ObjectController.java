@@ -260,7 +260,7 @@ public class ObjectController {
         }
         for(Field f : getAllFields(objClass)){
             if((caseSensitive && f.getName().compareTo(fieldName) == 0)
-             || f.getName().compareToIgnoreCase(fieldName) == 0){
+                    || f.getName().compareToIgnoreCase(fieldName) == 0){
                 if(fieldName.length() == fieldPath.length()){
                     return f;
                 }else{
@@ -277,7 +277,7 @@ public class ObjectController {
         return null;
     }
 
-     public static Map<String, Field> getAllAccessibleFields_Deep(Class<?> objClass){
+    public static Map<String, Field> getAllAccessibleFields_Deep(Class<?> objClass){
         return getAllAccessibleFields_Deep(objClass, null, null);
     }
 
@@ -513,7 +513,7 @@ public class ObjectController {
 
         if(obj!=null){
             if(obj.getClass().getSimpleName().compareToIgnoreCase(className) == 0
-             && (!searchClassNameInSuperClass || hasSuperClassSuffix(obj.getClass(), className))){
+                    && (!searchClassNameInSuperClass || hasSuperClassSuffix(obj.getClass(), className))){
                 res.add(obj);
             }else{
                 if(obj instanceof Collection){
@@ -684,6 +684,68 @@ public class ObjectController {
             return getObjectAttributeValue(result, pathAttribute.substring(attribute.length() + 1));
         } else {
             return result;
+        }
+    }
+
+    public static Boolean hasAttribute(Object obj, String pathAttribute) {
+        String attribute = pathAttribute;
+        while (attribute.startsWith(".")) {
+            attribute = attribute.substring(1);
+        }
+        pathAttribute = attribute;
+        if (attribute.contains("."))
+            attribute = attribute.substring(0, attribute.indexOf("."));
+
+        Object result = null;
+        // Cas des indices de liste
+        if (attribute.replaceAll("[\\d]+", "").length() == 0) {
+            if(pathAttribute.contains(".")) {
+                try {
+                    result = obj.getClass().getMethod("get", int.class).invoke(obj, Integer.parseInt(attribute));
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
+                         | NoSuchMethodException | SecurityException e) {
+                    logger.debug(e.getMessage(), e);
+                    for (Method m : obj.getClass().getMethods()) {
+                        logger.debug(m);
+                    }
+                }
+            }else{
+                try {
+                    return obj.getClass().getMethod("get", int.class) != null;
+                } catch (IllegalArgumentException | NoSuchMethodException | SecurityException ignore) {}
+            }
+        } else {
+
+            if(pathAttribute.contains(".")) {
+                // Si pas un entier on a une exception donc ce n'est pas une liste
+                try {
+                    result = getAttributeAccessMethod(obj, attribute).invoke(obj);
+                } catch (Exception e) {
+                    logger.debug(e.getMessage(), e);
+                    logger.debug("obj was " + obj + " path was '" + pathAttribute + "' and attribute " + " '" + attribute + "'");
+                    logger.debug("Now we try to get the attribute as a map key");
+                    try {
+                        result = obj.getClass().getMethod("get", Object.class).invoke(obj, attribute);
+                    } catch (Exception emap) {
+                        logger.debug(emap.getMessage(), emap);
+                    }
+                }
+            }else{
+                try {
+                    if(getAttributeAccessMethod(obj, attribute) != null)
+                        return true;
+                } catch (Exception e) {
+                    try {
+                        return obj.getClass().getMethod("get", Object.class) != null;
+                    } catch (Exception ignore) {}
+                }
+            }
+        }
+
+        if (result != null && pathAttribute.contains(".")) {
+            return hasAttribute(result, pathAttribute.substring(attribute.length() + 1));
+        } else {
+            return false;
         }
     }
 
