@@ -102,7 +102,6 @@ public class EPCGenericManagerTest {
         assert m_tsr201_bis_3digits.group("domainVersion").compareTo("2.0.1") == 0;
         assert m_tsr201_bis_3digits.group("type").compareTo("obj_TriangulatedSetRepresentation") == 0;
 
-
         Matcher m_tsr22 = EPCGenericManager.PATTERN_CONTENT_TYPE.matcher(EPCGenericManager.getObjectContentType_fromClassName(cName_tsr22, true));
         m_tsr22.find();
         assert m_tsr22.group("domain").compareTo("resqml") == 0;

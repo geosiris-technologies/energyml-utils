@@ -61,6 +61,7 @@ public class EPCGenericManager {
     public static final Pattern PATTERN_QUALIFIED_TYPE = Pattern.compile("(?<domain>[a-zA-Z]+)" + REGEX_DOMAIN_VERSION_FLAT + "\\.(?<type>[\\w_]+)");
 
     public static final Pattern PATTERN_UUID = Pattern.compile("(?<uuid>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
+
     public static final Pattern PATTERN_PROJECT_VERSION = Pattern.compile("(?<n0>[\\d]+)(.(?<n1>[\\d]+)(.(?<n2>[\\d]+))?)?");
 
     public static final Pattern PATTERN_ENERGYML_CLASS_NAME = Pattern.compile(REGEX_ENERGYML_CLASS_NAME);
@@ -542,7 +543,7 @@ public class EPCGenericManager {
         }
         return null;
     }
-
+    
     public static String getSchemaVersionFromClassName(String className) {
         return getSchemaVersionFromClassName(className, false);
     }
@@ -632,7 +633,6 @@ public class EPCGenericManager {
         if(maxVersionDigit<minVersionDigit){
             maxVersionDigit = minVersionDigit;
         }
-
         Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(className);
 
         if(pkgMatch.find()) {
