@@ -20,6 +20,8 @@ Possibility to edit objects using java reflexion and generate '.epc' file.
 
 - 1.0.0: 
     - Initial Release
+- 1.0.4: 
+    - Bug fixed and new functions added.
 
 ## License
 
