@@ -16,7 +16,6 @@ limitations under the License.
 package com.geosiris.energyml.utils;
 
 import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.JAXBException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,32 +30,32 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class ContextBuilder {
-	public static Logger logger = LogManager.getLogger(ContextBuilder.class);
+	public static final Logger logger = LogManager.getLogger(ContextBuilder.class);
 
-	public static JAXBContext getContext(String pkg) {
-		try {
-			return JAXBContext.newInstance(pkg);
-		} catch (JAXBException e) {
-			logger.debug(e.getMessage(), e);
+	public static final List<String> energymlPkgNameList = new ArrayList<>(List.of(new String[]{"common", "resqml", "witsml", "prodml"}));
+
+	public static String getPkgNamePattern(){
+		StringBuilder res = new StringBuilder();
+		for(String name: energymlPkgNameList){
+			res.append(name);
+			res.append("|");
 		}
-		logger.error("[ENERGYML] #Err# Context : " + pkg + " not created !");
-		return null;
-	}
-	public static Map<String, List<Class<?>>> getClassesForVersion(final String packageNamePrefix) {
-		Map<String, List<Class<?>>> result = new HashMap<>();
-		List<String> versions = getPackagesVersions(packageNamePrefix);
-		if(versions.size()<=0)
-			versions.add("");
-		for(String version : versions){
-			String pkg = packageNamePrefix + version.replace(".", "_");
-			result.put(pkg, new ArrayList<>(getClasses(pkg)));
+		if(energymlPkgNameList.size() > 0) { // removing last "|" char
+			res = new StringBuilder(res.substring(0, res.length() - 1));
 		}
-		return result;
+		return res.toString();
 	}
 
-	public static Set<Class<?>> getClasses(final String pkg) {
+	public static List<String> findAllEnergymlPackages(String pkgPrefix){
+		List<String> pkgs = new ArrayList<>();
+		for(String pkgName: energymlPkgNameList){
+			pkgs.addAll(listPackages(pkgPrefix + "." + pkgName));
+		}
+		return pkgs;
+	}
+
+	public static Set<Class<?>> getClasses(final String pkg, ClassLoader sysLoader) {
 		Set<Class<?>> result = new HashSet<>();
-		ClassLoader sysLoader = Thread.currentThread().getContextClassLoader();
 		String pkgPath = pkg.replace(".", "/");
 		try {
 			Enumeration<URL> resources = sysLoader.getResources(pkgPath);
@@ -78,7 +77,9 @@ public class ContextBuilder {
 	public static Set<String> findInZip(URL zipUrl, String regex, boolean onlyDir, boolean onlyFiles){
 		Set<String> result = new HashSet<>();
 		String finalUrl = zipUrl.getPath().replaceAll(".jar!/.*", ".jar")
-				.replaceAll("^[(file|jar):]+/", "");
+				.replaceAll("^[(file|jar):]+/", "")
+				.replaceAll("%20", " ")
+				.replaceAll("%5", "\\");
 
 		ZipInputStream zip = null;
 		try {
@@ -86,7 +87,9 @@ public class ContextBuilder {
 		}catch (IOException e){
 			try {
 				finalUrl = zipUrl.getPath().replaceAll(".jar!/.*", ".jar")
-						.replaceAll("^[(file|jar):]+", ""); // without removing the first "/" after the ":"
+						.replaceAll("^[(file|jar):]+", "")
+						.replaceAll("%20", " ")
+						.replaceAll("%5", "\\"); // without removing the first "/" after the ":"
 				zip = new ZipInputStream(new FileInputStream(finalUrl));
 			}catch (IOException e2){
 				logger.error(e.getMessage(), e);
@@ -119,12 +122,12 @@ public class ContextBuilder {
 		return packagePath + version.replace(".", "_");
 	}
 
-	public static JAXBContext createContext(String packagePath) {
+	public static JAXBContext createContext(String packagePath, final ClassLoader classLoader) {
 		JAXBContext context = null;
 
 		logger.debug("trying create jaxb context : " + packagePath);
 		try {
-			context = JAXBContext.newInstance(packagePath);
+			context = JAXBContext.newInstance(packagePath, classLoader);
 			logger.debug("jaxb context created for " + packagePath);
 		} catch (Exception e) {
 			logger.error("No context found for " + packagePath);
@@ -133,13 +136,17 @@ public class ContextBuilder {
 		return context;
 	}
 
+	public static JAXBContext createContext(String packagePath) {
+		return createContext(packagePath, Thread.currentThread().getContextClassLoader());
+	}
+
 	public static Map<String, JAXBContext> createAllContext_Filter(String packagePath, List<String> excludePkgList) {
 		try {
 			final List<String> pkgVersion = getPackagesVersions(packagePath);
 			logger.info("Found pkg version for : " + packagePath + " : " + pkgVersion);
 			if (pkgVersion.size() <= 0) {
 				try {
-					JAXBContext context = createContext(packagePath);
+					JAXBContext context = createContext(packagePath, Thread.currentThread().getContextClassLoader());
 					if (context != null) {
 						Map<String, JAXBContext> mapResult = new HashMap<>();
 						mapResult.put(packagePath, context);
@@ -164,7 +171,7 @@ public class ContextBuilder {
 
 					if (allowed) {
 						try {
-							JAXBContext context = createContext(pkgPath);
+							JAXBContext context = createContext(pkgPath, Thread.currentThread().getContextClassLoader());
 							if (context != null) {
 								Map<String, JAXBContext> mapResult = new HashMap<>();
 								mapResult.put(pkgPath, context);
@@ -195,7 +202,7 @@ public class ContextBuilder {
 
 	public static List<String> getPackagesVersions(final String packageName){
 		List<String> foundVersions = new ArrayList<>();
-		Pattern pattern = Pattern.compile(packageName + Utils.PATTERN_PKG_VERSION);
+		Pattern pattern = Pattern.compile(packageName + EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME);
 
 		// Si on a rien trouve dans les classes du projet on cherche dans les jars du buildPath
 		for (String pkg : listPackages(packageName.replace('.', '/'))) {

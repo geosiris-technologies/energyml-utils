@@ -15,9 +15,9 @@ limitations under the License.
 */
 package com.geosiris.energyml.pkg;
 
+import com.geosiris.energyml.exception.EPCPackageInitializationException;
 import com.geosiris.energyml.utils.ContextBuilder;
-import com.geosiris.energyml.utils.ObjectController;
-import com.geosiris.energyml.utils.Utils;
+import com.geosiris.energyml.utils.EPCGenericManager;
 import jakarta.xml.bind.*;
 import jakarta.xml.bind.util.ValidationEventCollector;
 import org.apache.logging.log4j.LogManager;
@@ -33,148 +33,86 @@ import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-public abstract class EPCPackage {
+public class EPCPackage {
     public static Logger logger = LogManager.getLogger(EPCPackage.class);
 
-    protected String xsdMappingFilePath;
-    protected Map<String, JAXBContext> contextList;
-    protected Map<String, Schema> xsdSchema;
+    protected JAXBContext jaxbContext;
+    protected Schema xsdSchema;
 
-    protected String name;
-    protected String packagePath;
+    protected List<Class<?>> pkgClasses;
+
+    protected final String domain;
+    /**
+     * Version of the package : for resqml2_2 is '2.2', for resqml_dev3x_2_2 is '2.2dev3'
+     */
+    protected final String domainVersion;
+    protected final String versionNum;
+    protected final String devVersionNum;
+    protected final String packageName;
+    protected final String packagePath;
 
 
-    public EPCPackage(String _name, String _path, String xsdMappingFilePath) {
-        this.name = _name;
-        this.xsdMappingFilePath = xsdMappingFilePath;
-        this.packagePath = _path;
-        contextList = ContextBuilder.createAllContext(packagePath);
+    public EPCPackage(String pkgPath, String xsdMappingFilePath) throws EPCPackageInitializationException {
+        this(pkgPath, xsdMappingFilePath, Thread.currentThread().getContextClassLoader());
+    }
 
-        xsdSchema = new HashMap<>();
+    public EPCPackage(String pkgPath, String xsdMappingFilePath, final ClassLoader classLoader) throws EPCPackageInitializationException {
+        String devVersionNum1;
+        this.packagePath = pkgPath;
+
+        Matcher pkgMatch = EPCGenericManager.PATTERN_ENERGYML_CLASS_NAME.matcher(pkgPath);
+        if(pkgMatch.find()){
+            this.domain = pkgMatch.group("domain");
+            this.domainVersion = (pkgMatch.group("versionNum") + (pkgMatch.group("dev") != null ? pkgMatch.group("dev"): "")).replace("_", ".");
+            this.packageName = pkgMatch.group("packageName");
+            this.versionNum = pkgMatch.group("versionNum").replace("_", ".");
+            try {
+                devVersionNum1 = pkgMatch.group("devNum").replace("_", ".");
+            }catch (Exception ignore){
+                devVersionNum1 = null;
+            }
+        }else{
+            throw new EPCPackageInitializationException(pkgPath);
+        }
+
+        this.devVersionNum = devVersionNum1;
+        this.jaxbContext = ContextBuilder.createContext(packagePath, classLoader);
+        this.pkgClasses = new ArrayList<>(ContextBuilder.getClasses(this.packagePath, classLoader));
+
         SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-        for(String pkg_name : contextList.keySet()){
-            try{
-                xsdSchema.put(pkg_name, sf.newSchema(new File(getXSDFilePathFromPkgName(pkg_name))));
-            }catch (Exception e){
-                logger.error("ERR: no xsd schema for package '" + pkg_name + "'");
-            }
-        }
-    }
-
-    public Map<String, String> getXSDFilePaths(){
-        return Utils.readJsonFileOrRessource(xsdMappingFilePath, HashMap.class);
-    }
-
-    public String getXSDFilePathFromPkgName(String pkg){
-        logger.debug("Searching schema for pkg : " + pkg);
-        try {
-            return getXSDFilePaths().get(pkg);
-        }catch (Exception ignore){}
-        return null;
-    }
-
-    public Schema getSchema(String pkg_name){
         try{
-            return xsdSchema.get(pkg_name);
-        }catch (Exception ignore){}
-        return null;
-    }
-
-    protected static Map<String, List<Class<?>>> searchAllClassesForVersions(final String pkgPath) {
-        return  ContextBuilder.getClassesForVersion(pkgPath);
-    }
-
-    public static String getSchemaVersionFromClassName(String pkgPath, String className) {
-        if (className != null) {
-            logger.debug("@getSchemaVersionFromClassName " + pkgPath + Utils.PATTERN_PKG_VERSION + " == " + className);
-            Pattern pattern = Pattern.compile(pkgPath + Utils.PATTERN_PKG_VERSION);
-            Matcher match = pattern.matcher(className);
-            if (match.find()) {
-                return match.group("version");
-            }
+            xsdSchema = sf.newSchema(new File(Objects.requireNonNull(xsdMappingFilePath)));
+        }catch (Exception e){
+            logger.error("ERR: no xsd schema for package '" + packagePath + "' at path " + xsdMappingFilePath);
         }
-        return null;
     }
 
-    public static String reformatSchemaVersion(String schemaVersion) {
-        if (schemaVersion != null) {
-            while (schemaVersion.startsWith(".") || schemaVersion.startsWith("_")) {
-                schemaVersion = schemaVersion.substring(1);
-            }
-            Matcher match = Pattern.compile(Utils.PATTERN_SCHEMA_VERSION + "$").matcher(schemaVersion);
-            if (match.find()) {
-                return match.group("version").replaceAll("[\\._]+", ".");
-            }
-            return "";
-        }
-        return null;
+    public boolean isDevVersion(){
+        return devVersionNum != null;
     }
 
-    abstract public List<String> getAllVersionsPackagePath();
-
-    abstract public String getObjectContentType(Object obj);
-
-    public String getObjectQualifiedType(Object obj) {
-        StringBuilder version = new StringBuilder(getSchemaVersion(obj).replaceAll("\\.", ""));
-        while (version.length() <= 1){
-            version.append("0");
-        }
-        if(version.length()>2){
-            version = new StringBuilder(version.substring(0, 2));
-        }
-        return this.name + version + "." + getObjectTypeForFilePath(obj);
+    public boolean isReleaseVersion(){
+        return ! isDevVersion();
     }
 
-    abstract public List<Class<?>> getRootsElementsClasses();
-
-    abstract public Map<String, List<Class<?>>> getAllClassesForVersion();
-
-    public JAXBContext getContext(String pkgPath) {
-        return contextList.get(pkgPath);
+    public List<Class<?>> getRootsElementsClasses() {
+        return pkgClasses.stream().filter(EPCGenericManager::isRootClass).collect(Collectors.toList());
     }
 
-    protected List<String> getAllVersionsPackagePath(Map<String, List<Class<?>>> pkgClasses) {
-        List<String> pkgPathList = new ArrayList<>();
-        for (String version : pkgClasses.keySet()) {
-            pkgPathList.add(getPackagePath(version));
-        }
-        return pkgPathList;
-    }
-
-    public List<Class<?>> getRootsElementsClasses(Map<String, List<Class<?>>> pkgClasses) {
-        List<Class<?>> rootClasses = new ArrayList<>();
-        for (List<Class<?>> clList : pkgClasses.values()) {
-            for (Class<?> cl : clList) {
-                if (isRootClass(cl)) {
-                    rootClasses.add(cl);
-                }
-            }
-        }
-        return rootClasses;
-    }
-
-    public String getObjectTypeForFilePath(Object obj) {
-        String objType = obj.getClass().getSimpleName();
-        String schemaVersion = getSchemaVersion(obj);
-        if (schemaVersion.startsWith("2.0") && objType.startsWith("Obj")) {
-            objType = objType.replace("Obj", "obj_");
-        }
-        objType = objType.replaceAll("(\\d+)D", "$1d");
-        return objType;
-    }
-
-    public Object createInstance(String className, String version) {
+    public Object createInstance(String className) {
         Object result = null;
         String simpleClassName = className;
         if (simpleClassName.contains(".")) {
             simpleClassName = simpleClassName.substring(simpleClassName.lastIndexOf(".") + 1);
         }
         try {
-            Object objFactory = getObjectFactory(version);
+            Object objFactory = getObjectFactory();
             if (objFactory == null) {
                 throw new Exception("No " + packagePath + " factory found");
             }
@@ -199,124 +137,52 @@ public abstract class EPCPackage {
     }
 
     public Boolean isClassNameMatchesPackage(String className) {
-        for (String pkgPath : getAllVersionsPackagePath()) {
-            if (className.startsWith(pkgPath + "."))
-                return true;
-        }
-        return false;
+        return className.startsWith(this.packagePath + ".");
     }
 
-
-
-    public Object getObjectFactory(String version) {
+    public Object getObjectFactory() {
         try {
-            String resqmlPackage = getPackagePath(version);
-            Class<?> objClass = Class.forName(resqmlPackage + ".ObjectFactory");
+            Class<?> objClass = Class.forName(this.packagePath + ".ObjectFactory");
             return objClass.getConstructor().newInstance();
         } catch (Exception e) {
-            logger.error("Error in getResqmlFactory with schemaVersion '" + version + "'");
+            logger.error("Error in getResqmlFactory with schemaVersion '" + domainVersion + "'");
             logger.error(e.getMessage(), e);
         }
         return null;
     }
 
-    public String getPackagePath(String version) {
-        return packagePath + reformatSchemaVersion(version).replace(".", "_");
-    }
-
-    public String getSchemaVersionFromClassName(String className) {
-        if (className != null) {
-            Pattern pattern = Pattern.compile(this.packagePath + Utils.PATTERN_PKG_VERSION);
-            Matcher match = pattern.matcher(className);
-            if (match.find()) {
-                return match.group("version");
-            }
-        }
-        return null;
-    }
-
-    public String getSchemaVersion(Object obj) {
-        String scheme = null;
-        if (obj != null) {
-            scheme = (String) ObjectController.getObjectAttributeValue(obj, "SchemaVersion");
-            if (scheme == null || scheme.length() <= 0) {
-                scheme = getSchemaVersionFromClassName(obj.getClass().getName());
-            }
-        }
-        return reformatSchemaVersion(scheme);
-    }
-
-    public static Boolean isRootClass(Class<?> objClass) {
-        if (objClass != null) {
-            return ObjectController.hasSuperClassSuffix(objClass, "AbstractObject");
-        }
-        return false;
-    }
-
-    public String getNamespace() {
-        return this.name;
-    }
-
-    public JAXBElement<?> parseXmlContent(String xmlContent) {
+    public JAXBElement<?> parseXmlContent(String xmlContent, boolean alternateDevVersionExists) {
         long ticBegin = System.currentTimeMillis();
 
-        List<String> schemaVersionFound = new ArrayList<>();
-
-        long ticBeginVersStringMatcher = System.currentTimeMillis();
-        Matcher match = Utils.PATTERN_SCHEMA_VERSION_IN_XML.matcher(xmlContent);
-        boolean matchFound = match.find();
-        long ticEndVersStringMatcher = System.currentTimeMillis();
-
-        if (matchFound) {
-            schemaVersionFound.add(reformatSchemaVersion(match.group("version")));
+        logger.debug(">Trying to parse from package '" + this.packagePath);
+        JAXBElement<?> result =  parseXmlFromContext(xmlContent, true, alternateDevVersionExists, xsdSchema);
+        if (result != null) {
+            logger.debug("Success reading with '" + this.packagePath + "' object class : "
+                    + result.getValue().getClass().getName());
         } else {
-            List<String> pkgVersion = ContextBuilder.getPackagesVersions(packagePath);
-            Collections.reverse(pkgVersion); // Reversing to parse at first the last version
-            schemaVersionFound.addAll(pkgVersion);
-        }
-
-        JAXBElement<?> result = null;
-        for (String version : schemaVersionFound) {
-            logger.debug(">Trying to parse from version found = '" + version + "' " + contextList.keySet());
-            String pkgPath = getPackagePath(version);
-            if (contextList.containsKey(pkgPath)) {
-                JAXBContext context = contextList.get(pkgPath);
-                Schema schema = null;
-                try{schema = xsdSchema.get(pkgPath);}catch (Exception e){logger.error(e.getMessage(), e);}
-                result = parseXmlFromContext(context, xmlContent, true, schema);
-                if (result != null) {
-                    logger.debug("Success reading with '" + pkgPath + "' object class : "
-                            + result.getValue().getClass().getName());
-                    break;
-                } else {
-                    logger.error("error reading with package " + pkgPath);
-                }
-            } else {
-                logger.debug("no context found for " + pkgPath + " for file content : "
-                        + xmlContent.substring(0, Math.min(xmlContent.length(), 200)));
-            }
+            logger.error("error reading with package " + this.packagePath);
         }
 
         long ticEnd = System.currentTimeMillis();
         logger.debug("\t@parseXmlContent : Parsing file took " + (ticEnd - ticBegin) / 1000.0 + "s");
-        logger.debug("\t\t : getSchemaVersion took " + (ticEndVersStringMatcher - ticBeginVersStringMatcher) / 1000.0 + "s");
         return result;
     }
 
-    private JAXBElement<?> parseXmlFromContext(JAXBContext context, String xmlContent,
+    private JAXBElement<?> parseXmlFromContext(String xmlContent,
                                                boolean tryWithoutNamespaceIfFail,
+                                               boolean testRemarshalling, // test to marshall/unmarshall after first unmarshall
+                                                                            // to verify if everything has been read correctly
                                                Schema schema) {
-        Unmarshaller unmarshaller;
         ValidationEventCollector vec = null;
 
         try {
             long ticCreateUnmarshaller_b = System.currentTimeMillis();
-            unmarshaller = context.createUnmarshaller();
+            Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
             if(schema != null)
                 unmarshaller.setSchema(schema);
 
             long ticCreateUnmarshaller_e = System.currentTimeMillis();
-            logger.debug("\t@parseXmlFromContext : Creating unmarshaller " + (ticCreateUnmarshaller_e - ticCreateUnmarshaller_b) / 1000.0 + "s");
+            logger.debug("\t@parseXmlFromContext (" + this.packagePath + ": Creating unmarshaller " + (ticCreateUnmarshaller_e - ticCreateUnmarshaller_b) / 1000.0 + "s");
 
             vec = new ValidationEventCollector();
             unmarshaller.setEventHandler(vec);
@@ -335,56 +201,56 @@ public abstract class EPCPackage {
                 logger.debug("events found");
                 return null;
             } else if (result != null) {
+                if(testRemarshalling) {
+                    logger.debug("no events found");
+                    long ticMarshall_b = System.currentTimeMillis();
+                    String xmlNewContent = marshal(result.getValue());
+                    long ticMarshall_e = System.currentTimeMillis();
+                    logger.debug("\t@parseXmlFromContext : Marshalling took " + (ticMarshall_e - ticMarshall_b) / 1000.0 + "s");
 
-                logger.debug("no events found");
-                long ticMarshall_b = System.currentTimeMillis();
-                String xmlNewContent = marshal(result.getValue());
-                long ticMarshall_e = System.currentTimeMillis();
-                logger.debug("\t@parseXmlFromContext : Marshalling took " + (ticMarshall_e - ticMarshall_b) / 1000.0 + "s");
+                    long ticCountingChevron_b = System.currentTimeMillis();
+                    int countOld = 0;
+                    int countNew = 0;
+                    for (int i = 0; i < xmlNewContent.length(); i++)
+                        if (xmlNewContent.charAt(i) == '<')
+                            if (xmlNewContent.charAt(i + 1) != '?') // On ne compte pas le <?xml du dÃ©part qui n'est pas
+                                // toujours la
+                                countNew++;
 
+                    for (int i = 0; i < xmlContent.length(); i++)
+                        if (xmlContent.charAt(i) == '<')
+                            if (xmlContent.charAt(i + 1) != '?') // On ne compte pas le <?xml du dÃ©part qui n'est pas
+                                // toujours la
+                                countOld++;
 
-                long ticCountingChevron_b = System.currentTimeMillis();
-                int countOld = 0;
-                int countNew = 0;
-                for (int i = 0; i < xmlNewContent.length(); i++)
-                    if (xmlNewContent.charAt(i) == '<')
-                        if (xmlNewContent.charAt(i + 1) != '?') // On ne compte pas le <?xml du dÃ©part qui n'est pas
-                            // toujours la
-                            countNew++;
+                    long ticCountingChevron_e = System.currentTimeMillis();
 
-                for (int i = 0; i < xmlContent.length(); i++)
-                    if (xmlContent.charAt(i) == '<')
-                        if (xmlContent.charAt(i + 1) != '?') // On ne compte pas le <?xml du dÃ©part qui n'est pas
-                            // toujours la
-                            countOld++;
+                    logger.debug("\t@parseXmlFromContext : Counting chevron cost " + (ticCountingChevron_e - ticCountingChevron_b) / 1000.0 + "s");
 
-                long ticCountingChevron_e = System.currentTimeMillis();
+                    if (countOld > countNew) {
+                        logger.error("Error reading object class : " + result.getValue().getClass().getName()
+                                + " old count of '<' : " + countOld + " new is : " + countNew);
+                        if (tryWithoutNamespaceIfFail) {
 
-                logger.debug("\t@parseXmlFromContext : Counting chevron cost " + (ticCountingChevron_e - ticCountingChevron_b) / 1000.0 + "s");
-
-                if (countOld > countNew) {
-                    logger.error("Error reading object class : " + result.getValue().getClass().getName()
-                            + " old count of '<' : " + countOld + " new is : " + countNew);
-                    if (tryWithoutNamespaceIfFail) {
-
-                        logger.debug("Trying without namespace");
-                        String contentNoNamespace = xmlContent.replaceAll("<(/?)[a-zA-Z0-9_]+:([\\w\\d_]+)", "<$1$2");
-                        return parseXmlFromContext(context, contentNoNamespace, false, schema);
-                    } else {
-                        return null;
+                            logger.debug("Trying without namespace");
+                            String contentNoNamespace = xmlContent.replaceAll("<(/?)[a-zA-Z0-9_]+:([\\w\\d_]+)", "<$1$2");
+                            return parseXmlFromContext(contentNoNamespace, false, testRemarshalling, schema);
+                        } else {
+                            return null;
+                        }
                     }
                 }
                 return result;
             }
         } catch (Exception e) {
             if(schema != null){
-                logger.error(e.getCause() + " " + e.getMessage());
+                logger.debug(e.getCause() + " " + e.getMessage());
                 // try to parse without schema
-                return parseXmlFromContext(context, xmlContent, tryWithoutNamespaceIfFail, null);
+                return parseXmlFromContext(xmlContent, tryWithoutNamespaceIfFail, testRemarshalling, null);
             }
             logger.debug(e.getMessage(), e);
             logger.debug("File not read : ");
-            logger.debug(xmlContent);
+            logger.debug(xmlContent.substring(0,500) + " [.....]");
             if(vec != null){
                 logger.debug("\tRead event [" + vec.getEvents().length + "]");
                 for (ValidationEvent ev : vec.getEvents()) {
@@ -396,18 +262,16 @@ public abstract class EPCPackage {
     }
 
     public void marshal(Object obj, OutputStream os) {
-        String pkgVersion = getSchemaVersionFromClassName(obj.getClass().getName());
-        JAXBContext context = getContext(getPackagePath(getSchemaVersionFromClassName(obj.getClass().getName())));
-        if (context != null) {
+        if (jaxbContext != null) {
             try {
-                Marshaller marshaller = context.createMarshaller();
+                Marshaller marshaller = jaxbContext.createMarshaller();
                 marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
                 marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
                 marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
 
-                Object factory = getObjectFactory(pkgVersion);
+                Object factory = getObjectFactory();
                 try {
-                    JAXBElement<?> elt = EPCPackageManager.wrap(obj, factory);
+                    JAXBElement<?> elt = wrap(obj, factory);
                     marshaller.marshal(elt, os);
                 } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
                          | InvocationTargetException e) {
@@ -419,20 +283,96 @@ public abstract class EPCPackage {
         }
     }
 
-    public String marshal(Object obj) {
+    public static JAXBElement<?> wrap(Object energymlObject, Object factory) throws NoSuchMethodException,
+            SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        final Class<?> class22 = energymlObject.getClass();
+        final String typename = class22.getSimpleName();
+
+        String[] listOfPotentialRemovablePrefix = { "Obj" };
+
+        Class<?> classFactory22 = factory.getClass();
+
         try {
-            OutputStream os = new ByteArrayOutputStream();
-            marshal(obj, os);
-            return os.toString();
-        }catch (Exception e){
-            logger.error("Error marshalling object " + obj);
-            logger.debug(e.getMessage(), e);
+            Method create = classFactory22.getMethod("create" + typename, class22);
+            return (JAXBElement<?>) create.invoke(factory, energymlObject);
+        } catch (Exception e) {
+            for (String prefixToRemove : listOfPotentialRemovablePrefix) {
+                if (typename.startsWith(prefixToRemove)) {
+                    try {
+                        Method create = classFactory22.getMethod("create" + typename.substring(prefixToRemove.length()),
+                                class22);
+                        return (JAXBElement<?>) create.invoke(factory, energymlObject);
+                    } catch (Exception e2) {
+                        logger.error(e.getMessage(), e);
+                        logger.error(e2.getMessage(), e2);
+                    }
+                }
+            }
         }
         return null;
     }
 
-    public String getName() {
-        return name;
+    public boolean validate(Object obj) throws JAXBException {
+        if(obj != null) {
+            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            jaxbUnmarshaller.setSchema(xsdSchema);
+
+            String xmlObj = marshal(obj);
+            ByteArrayInputStream bais = new ByteArrayInputStream(xmlObj.getBytes(StandardCharsets.UTF_8));
+
+            jaxbUnmarshaller.unmarshal(bais);
+            return true;
+        }
+        return false;
     }
 
+    public String marshal(Object obj) {
+        if(obj != null) {
+            try {
+                OutputStream os = new ByteArrayOutputStream();
+                marshal(obj, os);
+                return os.toString();
+            } catch (Exception e) {
+                logger.error("Error marshalling object " + obj);
+                logger.debug(e.getMessage(), e);
+            }
+        }
+        return null;
+    }
+
+/*
+       ______     __  __                    _______      __  __
+      / ____/__  / /_/ /____  __________  _/_/ ___/___  / /_/ /____  __________
+     / / __/ _ \/ __/ __/ _ \/ ___/ ___/_/_/ \__ \/ _ \/ __/ __/ _ \/ ___/ ___/
+    / /_/ /  __/ /_/ /_/  __/ /  (__  )/_/  ___/ /  __/ /_/ /_/  __/ /  (__  )
+    \____/\___/\__/\__/\___/_/  /____/_/   /____/\___/\__/\__/\___/_/  /____/
+*/
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public String getDomainVersion() {
+        return domainVersion;
+    }
+
+    public String getVersionNum() {
+        return versionNum;
+    }
+
+    public String getPackageName() {
+        return packageName;
+    }
+
+    public String getPackagePath() {
+        return packagePath;
+    }
+
+    public List<Class<?>> getPkgClasses() {
+        return pkgClasses;
+    }
+
+    public String getDevVersionNum() {
+        return devVersionNum;
+    }
 }

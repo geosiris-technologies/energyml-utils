@@ -4,7 +4,7 @@
     <groupId>com.geosiris</groupId>
     <artifactId>energyml-utils</artifactId>
     <name>${project.groupId}:${project.artifactId}</name>
-    <version>1.0.0</version>
+    <version>1.0.3</version>
     <organization>
         <name>Geosiris</name>
         <url>http://www.geosiris.com</url>
@@ -80,14 +80,26 @@
         <!-- Tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.8.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
             <version>5.8.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-resqml22</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.geosiris</groupId>
+            <artifactId>energyml-resqml22-dev3</artifactId>
+            <version>1.0.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

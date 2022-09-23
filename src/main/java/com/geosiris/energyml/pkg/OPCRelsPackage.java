@@ -17,9 +17,9 @@ package com.geosiris.energyml.pkg;
 
 
 import com.geosiris.energyml.utils.ContextBuilder;
+import com.geosiris.energyml.utils.EPCGenericManager;
 import com.geosiris.energyml.utils.ExportVersion;
 import com.geosiris.energyml.utils.ObjectController;
-import com.geosiris.energyml.utils.Utils;
 import energyml.relationships.Relationship;
 import energyml.relationships.Relationships;
 import jakarta.xml.bind.*;
@@ -93,7 +93,7 @@ public class OPCRelsPackage {
     public static String genRelsPathInEPC(Object obj, ExportVersion version) {
         StringBuilder sb = new StringBuilder();
 
-        String dirPath = Utils.genPathInEPC(obj, version);
+        String dirPath = EPCGenericManager.genPathInEPC(obj, version);
         if (dirPath.contains("/") || dirPath.contains("\\")) {
             if (dirPath.contains("/")) {
                 dirPath = dirPath.substring(0, dirPath.indexOf("/") + 1);
@@ -107,7 +107,7 @@ public class OPCRelsPackage {
         sb.append(dirPath);
         sb.append(genRelsFolderPath(version)).append("/");
         if (obj != null) {
-            sb.append(Utils.getObjectTypeForFilePath(obj));
+            sb.append(EPCGenericManager.getObjectTypeForFilePath(obj));
             sb.append("_");
             sb.append(ObjectController.getObjectAttributeValue(obj, "uuid"));
             sb.append(".xml");

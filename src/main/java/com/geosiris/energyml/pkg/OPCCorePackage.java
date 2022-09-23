@@ -19,15 +19,11 @@ package com.geosiris.energyml.pkg;
 import com.geosiris.energyml.utils.ContextBuilder;
 import com.geosiris.energyml.utils.ExportVersion;
 import energyml.core_properties.CoreProperties;
-import energyml.relationships.Relationship;
-import energyml.relationships.Relationships;
 import jakarta.xml.bind.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class OPCCorePackage {
     public static JAXBContext JAXB_CONTEXT = ContextBuilder.createContext("energyml.core_properties");

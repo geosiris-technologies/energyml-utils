@@ -59,7 +59,7 @@ public class ObjectController {
             variation.addAll(getAllAttributeNameVariations(attName.substring(1)));
         }
 
-        return new LinkedHashSet<String>(variation).stream().collect(Collectors.toList()); // on enleve les doublons
+        return new LinkedHashSet<>(variation).stream().collect(Collectors.toList()); // on enleve les doublons
     }
 
     public static Object createInstance(String objClassName, Object value) {
@@ -452,20 +452,21 @@ public class ObjectController {
      * @param className The class of sub object to search
      * @return All sub object with type "className" found in "obj"
      */
-    public static List<Object> findSubObjects(Object obj, String className){
+    public static List<Object> findSubObjects(Object obj, String className, boolean searchClassNameInSuperClass){
         List<Object> res = new ArrayList<>();
 
         if(obj!=null){
-            if(obj.getClass().getSimpleName().compareToIgnoreCase(className) == 0){
+            if(obj.getClass().getSimpleName().compareToIgnoreCase(className) == 0
+             && (!searchClassNameInSuperClass || hasSuperClassSuffix(obj.getClass(), className))){
                 res.add(obj);
             }else{
                 if(obj instanceof Collection){
                     for(Object c_o: ((Collection<?>)obj)){
-                        res.addAll(findSubObjects(c_o, className));
+                        res.addAll(findSubObjects(c_o, className, searchClassNameInSuperClass));
                     }
                 }else{
                     for(Pair<Class<?>, String> attribute : ObjectController.getClassAttributes(obj.getClass())){
-                        res.addAll(findSubObjects(ObjectController.getObjectAttributeValue(obj, attribute.r()), className));
+                        res.addAll(findSubObjects(ObjectController.getObjectAttributeValue(obj, attribute.r()), className, searchClassNameInSuperClass));
                     }
 
                 }
