@@ -3,9 +3,9 @@ name: Maven Package Energyml-utils
 on:
   release:
     types: [created]
-
-  pull_request:
-    branches: main
+#
+#  pull_request:
+#    branches: main
 
 jobs:
   build:

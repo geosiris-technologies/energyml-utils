@@ -47,6 +47,25 @@ public class ObjectControllerTest {
     }
 
     @Test
+    void test_has_attribute(){
+        assert ObjectController.hasAttribute(objTest, "attr0");
+        assert ObjectController.hasAttribute(objTest, "attr1");
+        assert ObjectController.hasAttribute(objTest, "lst0");
+        assert ObjectController.hasAttribute(objTest, "map0");
+        assert ObjectController.hasAttribute(objTest, "sub0");
+        assert ObjectController.hasAttribute(objTest, "sub1");
+
+        assert ObjectController.hasAttribute(objTest, "sub1.a.x");
+        assert ObjectController.hasAttribute(objTest, "sub1.a.y");
+        assert ObjectController.hasAttribute(objTest, "sub1.b.x");
+        assert ObjectController.hasAttribute(objTest, "sub1.b.y");
+
+        assert !ObjectController.hasAttribute(objTest, "sub1ze.b.y");
+        assert !ObjectController.hasAttribute(objTest, "sub1.b.ze");
+        assert !ObjectController.hasAttribute(objTest, "sub1.ze.y");
+    }
+
+    @Test
     void test_access_path_depth_2_list(){
         System.err.println(((String) ObjectController.getObjectAttributeValue(objTest, "lst0.0")).compareTo("Hello"));
         assert ((String) ObjectController.getObjectAttributeValue(objTest, "lst0.0")).compareTo("Hello") == 0;

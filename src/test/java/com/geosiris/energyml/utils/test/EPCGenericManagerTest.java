@@ -17,7 +17,9 @@ package com.geosiris.energyml.utils.test;
 
 import com.geosiris.energyml.utils.EPCGenericManager;
 import com.geosiris.energyml.utils.ExportVersion;
+import com.geosiris.energyml.utils.ObjectController;
 import com.geosiris.energyml.utils.Utils;
+import energyml.common2_2.DataObjectReference;
 import energyml.common2_3.Citation;
 import energyml.resqml2_2.TriangulatedSetRepresentation;
 import org.junit.jupiter.api.Test;
@@ -38,7 +40,8 @@ public class EPCGenericManagerTest {
 
     @Test
     void getSchemaVersionFromClassName_test(){
-        assert EPCGenericManager.getSchemaVersionFromClassName(cName_tsr201, true).compareTo("2.0.1") == 0;
+        assert EPCGenericManager.getSchemaVersionFromClassName(cName_tsr201, true).compareTo("2.0") == 0;
+        assert EPCGenericManager.getSchemaVersionFromClassName(cName_tsr201, true, 3).compareTo("2.0.1") == 0;
         assert EPCGenericManager.getSchemaVersionFromClassName(cName_tsr22, true).compareTo("2.2") == 0;
         assert EPCGenericManager.getSchemaVersionFromClassName(cName_tsr22dev3, true).compareTo("2.2dev3") == 0;
         assert EPCGenericManager.getSchemaVersionFromClassName(cName_tsr22dev3, false).compareTo("2.2") == 0;
@@ -90,8 +93,14 @@ public class EPCGenericManagerTest {
         Matcher m_tsr201 = EPCGenericManager.PATTERN_CONTENT_TYPE.matcher(EPCGenericManager.getObjectContentType_fromClassName(cName_tsr201, true));
         m_tsr201.find();
         assert m_tsr201.group("domain").compareTo("resqml") == 0;
-        assert m_tsr201.group("domainVersion").compareTo("2.0.1") == 0;
+        assert m_tsr201.group("domainVersion").compareTo("2.0") == 0;
         assert m_tsr201.group("type").compareTo("obj_TriangulatedSetRepresentation") == 0;
+
+        Matcher m_tsr201_bis_3digits = EPCGenericManager.PATTERN_CONTENT_TYPE.matcher(EPCGenericManager.getObjectContentType_fromClassName(cName_tsr201, true,3));
+        m_tsr201_bis_3digits.find();
+        assert m_tsr201_bis_3digits.group("domain").compareTo("resqml") == 0;
+        assert m_tsr201_bis_3digits.group("domainVersion").compareTo("2.0.1") == 0;
+        assert m_tsr201_bis_3digits.group("type").compareTo("obj_TriangulatedSetRepresentation") == 0;
 
         Matcher m_tsr22 = EPCGenericManager.PATTERN_CONTENT_TYPE.matcher(EPCGenericManager.getObjectContentType_fromClassName(cName_tsr22, true));
         m_tsr22.find();
@@ -105,6 +114,12 @@ public class EPCGenericManagerTest {
         assert m_tsr22dev3.group("domainVersion").compareTo("2.2dev3") == 0;
         assert m_tsr22dev3.group("type").compareTo("TriangulatedSetRepresentation") == 0;
 
+        Matcher m_tsr22dev3_noDev = EPCGenericManager.PATTERN_CONTENT_TYPE.matcher(EPCGenericManager.getObjectContentType_fromClassName(cName_tsr22dev3));
+        m_tsr22dev3_noDev.find();
+        assert m_tsr22dev3_noDev.group("domain").compareTo("resqml") == 0;
+        assert m_tsr22dev3_noDev.group("domainVersion").compareTo("2.2") == 0;
+        assert m_tsr22dev3_noDev.group("type").compareTo("TriangulatedSetRepresentation") == 0;
+
         Matcher m_tsr22dev3_BIS = EPCGenericManager.PATTERN_CONTENT_TYPE.matcher(EPCGenericManager.getObjectContentType_fromClassName(cName_tsr22dev3, false));
         m_tsr22dev3_BIS.find();
         assert m_tsr22dev3_BIS.group("domain").compareTo("resqml") == 0;
@@ -116,6 +131,18 @@ public class EPCGenericManagerTest {
         assert m_act23.group("domain").compareTo("eml") == 0;
         assert m_act23.group("domainVersion").compareTo("2.3") == 0;
         assert m_act23.group("type").compareTo("Activity") == 0;
+    }
+
+    @Test
+    void test_has_attribute_content_type(){
+        assert ObjectController.hasAttribute(new energyml.common2_2.DataObjectReference(), "contentType");
+        assert !ObjectController.hasAttribute(new energyml.common2_3.DataObjectReference(), "contentType");
+    }
+
+    @Test
+    void test_has_attribute_qualified_type(){
+        assert !ObjectController.hasAttribute(new energyml.common2_2.DataObjectReference(), "qualifiedType");
+        assert ObjectController.hasAttribute(new energyml.common2_3.DataObjectReference(), "qualifiedType");
     }
 
     @Test
@@ -252,11 +279,34 @@ public class EPCGenericManagerTest {
         assert EPCGenericManager.genPathInEPC(TR_TEST, ExportVersion.EXPANDED).compareTo("namespace_resqml22/" + fName + ".xml") == 0;
     }
 
+    @Test
+    void test_reshape_version(){
+        assert EPCGenericManager.reshapeVersion("v2.0.1", 0).compareTo("v2.0.1") == 0;
+        assert EPCGenericManager.reshapeVersion("v2.0.1", 1).compareTo("2") == 0;
+        assert EPCGenericManager.reshapeVersion("v2.0.1", 2).compareTo("2.0") == 0;
+        assert EPCGenericManager.reshapeVersion("v2.0.1", 3).compareTo("2.0.1") == 0;
+        assert EPCGenericManager.reshapeVersion("v2.0.1", 4).compareTo("v2.0.1") == 0;
+        assert EPCGenericManager.reshapeVersion("v2.0.1.5.2.6.5.4", 4).compareTo("v2.0.1.5.2.6.5.4") == 0;
+    }
+
     public static TriangulatedSetRepresentation createTestData_trSet(){
         TriangulatedSetRepresentation tr = new TriangulatedSetRepresentation();
         tr.setUuid(UUID.randomUUID()+"");
 
         Citation cit = new Citation();
+        cit.setCreation(Utils.getCalendarForNow());
+        cit.setTitle("Tr Title");
+        cit.setOriginator("Maven test");
+        tr.setCitation(cit);
+
+        return tr;
+    }
+
+    public static energyml.resqml_dev3x_2_2.TriangulatedSetRepresentation createTestData_trSet_22dev3(){
+        energyml.resqml_dev3x_2_2.TriangulatedSetRepresentation tr = new energyml.resqml_dev3x_2_2.TriangulatedSetRepresentation();
+        tr.setUuid(UUID.randomUUID()+"");
+
+        energyml.common2_2.Citation cit = new energyml.common2_2.Citation();
         cit.setCreation(Utils.getCalendarForNow());
         cit.setTitle("Tr Title");
         cit.setOriginator("Maven test");
