@@ -48,7 +48,7 @@
         <dependency>
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-opc</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
         <dependency>
             <groupId>jakarta.xml.bind</groupId>
