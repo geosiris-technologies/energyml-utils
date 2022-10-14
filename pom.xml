@@ -93,7 +93,7 @@
         <dependency>
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-resqml22</artifactId>
-            <version>1.0.1</version>
+            <version>1.0.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>
