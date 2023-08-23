@@ -309,6 +309,24 @@ public class EPCPackage {
                 }
             }
         }
+        // Without "create" prefix
+        try {
+            Method create = classFactory22.getMethod(typename, class22);
+            return (JAXBElement<?>) create.invoke(factory, energymlObject);
+        } catch (Exception e) {
+            for (String prefixToRemove : listOfPotentialRemovablePrefix) {
+                if (typename.startsWith(prefixToRemove)) {
+                    try {
+                        Method create = classFactory22.getMethod(typename.substring(prefixToRemove.length()),
+                                class22);
+                        return (JAXBElement<?>) create.invoke(factory, energymlObject);
+                    } catch (Exception e2) {
+                        logger.error(e.getMessage(), e);
+                        logger.error(e2.getMessage(), e2);
+                    }
+                }
+            }
+        }
         return null;
     }
 

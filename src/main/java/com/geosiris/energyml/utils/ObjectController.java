@@ -62,6 +62,24 @@ public class ObjectController {
         return new LinkedHashSet<>(variation).stream().collect(Collectors.toList()); // on enleve les doublons
     }
 
+    public static Object stringToEnum(String value, Class<?> enumClass){
+        List<String> methodsNames = Arrays.asList(new String[]{"fromString", "valueOf", "fromValue"});
+        List<Method> potentialMethod = new ArrayList<>();
+        for(Method m : enumClass.getMethods()){
+            for(String name : methodsNames) {
+                if (m.getName().compareToIgnoreCase(name) == 0){
+                    potentialMethod.add(m);
+                }
+            }
+        }
+        for(Method m : potentialMethod){
+            try{
+                return m.invoke(null, value);
+            }catch (Exception ignore){}
+        }
+        return null;
+    }
+
     public static Object createInstance(String objClassName, Object value) {
         return createInstance(objClassName, value, true);
     }
@@ -520,17 +538,47 @@ public class ObjectController {
                     for(Object c_o: ((Collection<?>)obj)){
                         res.addAll(findSubObjects(c_o, className, searchClassNameInSuperClass));
                     }
+                }else if(obj instanceof Map){
+                    for(Object c_o: ((Map<?, ?>)obj).values()){
+                        res.addAll(findSubObjects(c_o, className, searchClassNameInSuperClass));
+                    }
                 }else{
                     for(Pair<Class<?>, String> attribute : ObjectController.getClassAttributes(obj.getClass())){
                         res.addAll(findSubObjects(ObjectController.getObjectAttributeValue(obj, attribute.r()), className, searchClassNameInSuperClass));
                     }
-
                 }
             }
         }
         return res;
     }
 
+    public static List<Object> findAllAttributesFromName(Object obj, String attributeName, boolean caseSensitive, boolean searchInsideResults){
+        List<Object> res = new ArrayList<>();
+
+        if(obj!=null){
+            if(obj instanceof Collection){
+                for(Object c_o: ((Collection<?>)obj)){
+                    res.addAll(findAllAttributesFromName(c_o, attributeName, caseSensitive, searchInsideResults));
+                }
+            }else if(obj instanceof Map){
+                for(Object c_o: ((Map<?, ?>)obj).values()){
+                    res.addAll(findAllAttributesFromName(c_o, attributeName, caseSensitive, searchInsideResults));
+                }
+            }else{
+                for(Pair<Class<?>, String> attribute : ObjectController.getClassAttributes(obj.getClass())){
+                    boolean isMatch = attribute.r().compareToIgnoreCase(attributeName) == 0 && (!caseSensitive || attribute.r().substring(1).compareTo(attributeName.substring(1)) == 0);
+                    if(isMatch){
+                        res.add(ObjectController.getObjectAttributeValue(obj, attribute.r()));
+                    }
+                    if(!isMatch || searchInsideResults){
+                        res.addAll(findAllAttributesFromName(ObjectController.getObjectAttributeValue(obj, attribute.r()), attributeName, caseSensitive, searchInsideResults));
+                    }
+                }
+
+            }
+        }
+        return res;
+    }
 
     public static Map<String, Object> findSubObjectsAndPath(Object obj, String className){
         return findSubObjectsAndPath(obj, className, "");
@@ -547,6 +595,10 @@ public class ObjectController {
                     Object[] array = ((Collection<?>)obj).toArray();
                     for(int i = 0; i<array.length; i++){
                         res.putAll(findSubObjectsAndPath(array[i], className, currentPath + "." + i));
+                    }
+                }else if(obj instanceof Map){
+                    for(Map.Entry<?,?> c_o: ((Map<?, ?>)obj).entrySet()){
+                        res.putAll(findSubObjectsAndPath(c_o.getValue(), className, currentPath + "." + c_o.getKey()));
                     }
                 }else{
                     for(Pair<Class<?>, String> attribute : ObjectController.getClassAttributes(obj.getClass())){

@@ -15,9 +15,21 @@ limitations under the License.
 */
 package com.geosiris.energyml.utils.test;
 
+import com.geosiris.energyml.pkg.EPCFile;
+import com.geosiris.energyml.pkg.EPCPackageManager;
+import com.geosiris.energyml.utils.EPCGenericManager;
 import com.geosiris.energyml.utils.ObjectController;
+import com.geosiris.energyml.utils.Utils;
+import com.google.gson.Gson;
+import energyml.common2_3.AxisOrder2D;
+import energyml.resqml2_2.ContactElement;
+import energyml.resqml2_2.TriangulatedSetRepresentation;
 import org.junit.jupiter.api.Test;
 
+import javax.xml.datatype.XMLGregorianCalendar;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -102,6 +114,7 @@ public class ObjectControllerTest {
     void test_super_class_suffix(){
         assert ObjectController.hasSuperClassSuffix(HashMap.class, "map");
         assert ObjectController.hasSuperClassSuffix(ArrayList.class, "Collection");
+        assert ObjectController.hasSuperClassSuffix(ContactElement.class, "DataObjectReference");
     }
 
     @Test
@@ -151,6 +164,13 @@ public class ObjectControllerTest {
     }
 
     @Test
+    void test_stringToEnum(){
+        assert ObjectController.stringToEnum(AxisOrder2D.EASTING_SOUTHING.value(), AxisOrder2D.class) == AxisOrder2D.EASTING_SOUTHING;
+        assert ObjectController.stringToEnum(AxisOrder2D.EASTING_NORTHING.value(), AxisOrder2D.class) == AxisOrder2D.EASTING_NORTHING;
+        assert ObjectController.stringToEnum(AxisOrder2D.NORTHING_WESTING.value(), AxisOrder2D.class) == AxisOrder2D.NORTHING_WESTING;
+    }
+
+    @Test
     void test_is_property_class(){
         assert ObjectController.isPropertyClass(String.class);
         assert ObjectController.isPropertyClass(Integer.class);
@@ -161,6 +181,32 @@ public class ObjectControllerTest {
         assert !ObjectController.isPropertyClass(SampleClass_B.class);
         assert !ObjectController.isPropertyClass(Map.class);
         assert !ObjectController.isPropertyClass(List.class);
+    }
+
+    @Test
+    void test_findAllAttributesFromName(){
+        List<?> attribs_cs = ObjectController.findAllAttributesFromName(new SampleClass_A(), "name", true, false);
+        assert attribs_cs.size() == 3;
+
+        for(String val: new String[]{"First", "Second", "DefaultName"}){
+            Boolean found = false;
+            for(Object val_f : attribs_cs){
+                found = found || val.compareTo((String) val_f) == 0;
+            }
+            assert found;
+        }
+
+        List<?> attribs_ci = ObjectController.findAllAttributesFromName(new SampleClass_A(), "name", false, false);
+        assert attribs_ci.size() == 4;
+
+        for(String val: new String[]{"First", "Second", "DefaultName", "Parent"}){
+            Boolean found = false;
+            for(Object val_f : attribs_ci){
+                found = found || val.compareTo((String) val_f) == 0;
+            }
+            assert found;
+        }
+
     }
 
 
@@ -190,6 +236,7 @@ public class ObjectControllerTest {
 
         private SampleClass_B sub0;
         private Map<String, SampleClass_B> sub1;
+        private String NaMe;
 
         public SampleClass_A(){
             this.attr0 = 42;
@@ -201,8 +248,9 @@ public class ObjectControllerTest {
             this.map0.put("c", "c2");
             this.sub0 = new SampleClass_B();
             this.sub1 = new HashMap<>();
-            this.sub1.put("a", new SampleClass_B(-1.f, 1.f));
-            this.sub1.put("b", new SampleClass_B(-2.f, 2.f));
+            this.sub1.put("a", new SampleClass_B(-1.f, 1.f, "First"));
+            this.sub1.put("b", new SampleClass_B(-2.f, 2.f, "Second"));
+            this.NaMe = "Parent";
         }
 
         public int getAttr0() {
@@ -252,18 +300,25 @@ public class ObjectControllerTest {
         public void setSub1(Map<String, SampleClass_B> sub1) {
             this.sub1 = sub1;
         }
+
+        public String getNaMe() {return NaMe;}
+
+        public void setNaMe(String naMe) {NaMe = naMe;}
     }
 
     protected static class SampleClass_B{
         private Float x;
         private Float y;
+        private String name;
         public SampleClass_B(){
             this.x = 12.f;
             this.y = 24.f;
+            this.name = "DefaultName";
         }
-        public SampleClass_B(Float x, Float y){
+        public SampleClass_B(Float x, Float y, String name){
             this.x = x;
             this.y = y;
+            this.name = name;
         }
 
         public Float getX() {
@@ -281,5 +336,78 @@ public class ObjectControllerTest {
         public void setY(Float y) {
             this.y = y;
         }
+
+        public String getName() {return name;}
+
+        public void setName(String name) {this.name = name;}
+    }
+
+    public static void main(String[] argv) throws Exception {
+        Gson gson = new Gson();
+        List<Object> objList = new ArrayList<>();
+        objList.add(gson.fromJson("{"
+                + "    \"uuid\": \"54d7f659-7be4-428e-8a96-4aab9915a986\","
+                + "    \"citation\":"
+                + "    {"
+                + "        \"title\": \"Coucou Title0\","
+                + "        \"originator\": \"Test class\""
+                + "    }"
+                + "}", TriangulatedSetRepresentation.class
+        ));
+        objList.add(gson.fromJson("{"
+                + "    \"uuid\": \"54d7f659-7be4-428e-8a96-4aab9915a986\","
+                + "    \"citation\":"
+                + "    {"
+                + "        \"title\": \"Coucou Title1\","
+                + "        \"originator\": \"Test class\""
+                + "    }"
+                + "}", TriangulatedSetRepresentation.class
+        ));
+        objList.add(gson.fromJson("{"
+                + "    \"uuid\": \"54d7f659-7be4-428e-8a96-4aab9915a986\","
+                + "    \"citation\":"
+                + "    {"
+                + "        \"title\": \"Coucou Title2\","
+                + "        \"originator\": \"Test class\""
+                + "    }"
+                + "}", TriangulatedSetRepresentation.class
+        ));
+        for(Object o : objList){
+            ObjectController.editObjectAttribute(o, ".Citation.LastUpdate", Utils.getCalendar("2023-" + (12-objList.indexOf(o)) + "-09T09:57:52.268+02:00"));
+        }
+
+        ObjectController.editObjectAttribute(objList.get(1), "Citation.LastUpdate", null);
+
+        objList.stream().forEach(x -> System.out.println(ObjectController.getObjectAttributeValue(x, "Citation.LastUpdate")));
+        System.out.println("==============");
+        objList.sort((a, b) -> {
+                XMLGregorianCalendar a_lastModif = (XMLGregorianCalendar) ObjectController.getObjectAttributeValue(a,"Citation.LastUpdate");
+                XMLGregorianCalendar b_lastModif = (XMLGregorianCalendar) ObjectController.getObjectAttributeValue(b,"Citation.LastUpdate");
+                if(a_lastModif == null){
+                    return 1;
+                } else if (b_lastModif == null) {
+                    return -1;
+                }else{
+                    return b_lastModif.compare(a_lastModif);
+                }
+            });
+        objList.stream().forEach(x -> System.out.println(ObjectController.getObjectAttributeValue(x, "Citation.LastUpdate")));
+
+        Map<String, String> m = new HashMap<>();
+        m.put(null, "coucou");
+
+        for(String s : m.keySet()){
+            System.out.println(s + " -- " + m.get(s));
+        }
+
+
+        System.out.println(Paths.get("namespace_resqml22/aa.xml").getParent().relativize(Paths.get("namespace_resqml22/coucou.xml")).toString());
+        System.out.println(Paths.get("namespace_witsml22/aa.xml").getParent().relativize(Paths.get("namespace_resqml22/coucou.xml")).toString());
+        System.out.println("namespace_witsml22/_rels/aa.xml.rels".substring(0, "namespace_witsml22/_rels/aa.xml.rels".length() - 4).replace("rels/", "").replace("rels\\", ""));
+        System.out.println("namespace_witsml22/_rels/aa.xml.rels".substring(0, "namespace_witsml22/_rels/aa.xml.rels".length() - 4).replace("rels/", "").replace("rels\\", ""));
+
+        EPCPackageManager pkgManager = new EPCPackageManager("energyml",null, null, null);
+        EPCFile.read(new FileInputStream("D:/Geosiris/Cloud/Resqml_Tools/2020-2022-DATA/ALWYN_DEPTH/ALWYN-RESQML_v2.2.epc"), pkgManager).export(new FileOutputStream("C:/Users/Cryptaro/Downloads/cc.epc"));
+
     }
 }

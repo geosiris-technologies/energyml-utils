@@ -59,6 +59,9 @@ public class EPCPackageManager {
     private final String accessibleDORFilePath;
     public final List<EPCPackage> PKG_LIST;
 
+    public EPCPackageManager(String energymlPkgPrefix){
+        this(initPkgList(energymlPkgPrefix, null), null, null);
+    }
     public EPCPackageManager(String energymlPkgPrefix, String xsdCommentsFolderPath, String accessibleDORFilePath,
             String xsdMappingFilePath) {
         this(initPkgList(energymlPkgPrefix, xsdMappingFilePath), xsdCommentsFolderPath, accessibleDORFilePath);
@@ -86,9 +89,15 @@ public class EPCPackageManager {
     }
 
     public static List<EPCPackage> initPkgList(String energymlPkgPrefix, String xsdMappingFilePath) {
-        Map<String, String> xsdMapping = Utils.readJsonFileOrRessource(xsdMappingFilePath, HashMap.class);
+        Map<String, String> xsdMapping;
 
-		final ClassLoader sysLoader = Thread.currentThread().getContextClassLoader();
+        if(xsdMappingFilePath != null){
+            xsdMapping = Utils.readJsonFileOrRessource(xsdMappingFilePath, HashMap.class);
+        } else {
+            xsdMapping = null;
+        }
+
+        final ClassLoader sysLoader = Thread.currentThread().getContextClassLoader();
 
         return ContextBuilder.findAllEnergymlPackages(energymlPkgPrefix).parallelStream().map(
                 (pkgPath) -> {
@@ -166,6 +175,7 @@ public class EPCPackageManager {
                 try {
                     JAXBElement<?> obj = pkg.parseXmlContent(xmlContent, hasDevVersion(pkg));
                     if (obj != null) {
+                        logger.info("Unmarshalled with pkg : " + pkg.getPackagePath());
                         return obj;
                     }
                 }catch (Exception e){
@@ -180,6 +190,7 @@ public class EPCPackageManager {
                     try {
                         JAXBElement<?> obj = pkg.parseXmlContent(xmlContent, true);
                         if (obj != null) {
+                            logger.info("Unmarshalled with pkg : " + pkg.getPackagePath());
                             return obj;
                         }
                     }catch (Exception e){

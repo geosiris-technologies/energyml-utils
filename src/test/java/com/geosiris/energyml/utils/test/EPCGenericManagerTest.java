@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.geosiris.energyml.utils.test;
 
+import com.geosiris.energyml.pkg.EPCPackageManager;
 import com.geosiris.energyml.utils.EPCGenericManager;
 import com.geosiris.energyml.utils.ExportVersion;
 import com.geosiris.energyml.utils.ObjectController;
@@ -316,15 +317,21 @@ public class EPCGenericManagerTest {
     }
 
     public static void main(String[] argv){
-        System.out.println(EPCGenericManager.getObjectQualifiedType(cName_tsr22dev3, true));
-        Matcher m_tsr201 = EPCGenericManager.PATTERN_QUALIFIED_TYPE.matcher(EPCGenericManager.getObjectQualifiedType(cName_tsr201, true));
-        m_tsr201.find();
-        System.out.println(m_tsr201.group("domain"));
-        System.out.println(m_tsr201.group("domainVersion"));
-        System.out.println(m_tsr201.group("type"));
+//        System.out.println(EPCGenericManager.getObjectQualifiedType(cName_tsr22dev3, true));
+//        Matcher m_tsr201 = EPCGenericManager.PATTERN_QUALIFIED_TYPE.matcher(EPCGenericManager.getObjectQualifiedType(cName_tsr201, true));
+//        m_tsr201.find();
+//        System.out.println(m_tsr201.group("domain"));
+//        System.out.println(m_tsr201.group("domainVersion"));
+//        System.out.println(m_tsr201.group("type"));
 //        EPCPackageManager manager = new EPCPackageManager("energyml", "", "", "");
 //        String tr0 = Utils.readFileOrRessource("C:/Users/Cryptaro/Downloads/TriangulatedSetRepresentation_616f910c-b3f2-4910-978b-146c21762d12.xml");
 //        System.out.println(tr0);
 //        manager.getClasses().stream().filter(cl -> cl != null && !Modifier.isAbstract(cl.getModifiers())).collect(Collectors.toList()).forEach(x -> System.out.println(x));
+
+
+        String graphical = "<?xml version=\"1.0\" encoding=\"utf-8\"?><GraphicalInformationSet xmlns=\"http://www.energistics.org/energyml/data/commonv2\" xmlns:ns2=\"http://www.energistics.org/energyml/data/resqmlv2\" uuid=\"5e3206c9-b3fa-4506-9ac0-1c76fdf72fbc\" schemaVersion=\"2.3\"><Citation><Title>GRAPHICAL INFORMATION SET 1</Title><Originator>Geosiris user</Originator><Creation>2023-05-24T09:15:46.016Z</Creation><Format>Geosiris WebStudio</Format><LastUpdate>2023-05-25T20:27:34.990Z</LastUpdate></Citation><GraphicalInformation xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"ns2:ColorInformation\"><TargetObject><Uuid>d1966850-6b1e-4dd7-abda-3c5b7b975712</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F3_2011</Title></TargetObject><TargetObject><Uuid>8e329639-4097-4467-9e0e-a04e645c9035</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F20_2013_update</Title></TargetObject><TargetObject><Uuid>38bf3283-9514-43ab-81e3-17080dc5826f</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F20_2011_New2</Title></TargetObject><TargetObject><Uuid>7908100a-68c1-4c07-a2f9-1c6f76af3a43</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F52_2011</Title></TargetObject><TargetObject><Uuid>052ec11a-e9f9-4faa-8512-ba0ef589952e</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F28_2011</Title></TargetObject><TargetObject><Uuid>3229af74-8dcd-4df5-8148-9b4f54d0c381</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F11_2011</Title></TargetObject><TargetObject><Uuid>4e23ee3e-54a7-427a-83f9-1473de6c56a4</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F27_2011</Title></TargetObject><TargetObject><Uuid>303bed39-6290-4ea7-b9f1-917438833fd5</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F8_2013_update</Title></TargetObject><TargetObject><Uuid>203ebec9-df29-4a6b-b621-ba1b8378c7fa</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F10_2011</Title></TargetObject><TargetObject><Uuid>27cf5a6d-6869-45e8-a061-555236f1546c</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F17_2011</Title></TargetObject><TargetObject><Uuid>162b0fd8-6dad-43ce-af6c-4b6370af767a</Uuid><QualifiedType>resqml22.PolylineSetRepresentation</QualifiedType><Title>depthVolve_F7_2011</Title></TargetObject><ns2:UseLogarithmicMapping>false</ns2:UseLogarithmicMapping><ns2:UseReverseMapping>false</ns2:UseReverseMapping><ns2:ValueVectorIndex>2</ns2:ValueVectorIndex><ns2:ColorMap><Uuid>44920872-7f80-4fd9-992e-cd941f45c2e4</Uuid><QualifiedType>resqml22.DiscreteColorMap</QualifiedType><Title>DISCRETE COLOR MAP 0</Title></ns2:ColorMap></GraphicalInformation><GraphicalInformation xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"ns2:ColorInformation\"><TargetObject><Uuid>349ecd25-5db0-40c1-b179-b5316fbc754f</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F27_2011_MBA</Title></TargetObject><TargetObject><Uuid>c2f53ce1-1b2d-4819-b397-f174bc8c23e0</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F11_2011_MBA</Title></TargetObject><TargetObject><Uuid>5db39032-4998-4b75-9156-ea104a8649d2</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F17_2011_MBA</Title></TargetObject><TargetObject><Uuid>fa4e80d0-d30f-48d3-aa70-41d06b837c2b</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F3_2011_MBA</Title></TargetObject><TargetObject><Uuid>bc1fbf7f-1495-4f1f-9c30-8be4b19a5475</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F7_2011_MBA</Title></TargetObject><TargetObject><Uuid>79f43d6a-77e1-46b7-b161-127b395a64be</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F28_2011_MBA</Title></TargetObject><TargetObject><Uuid>cdd9c2cd-6673-44b0-8d6d-812319daacaa</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F20_2013_update_MBA</Title></TargetObject><TargetObject><Uuid>13f6b289-3b0a-4ec3-b060-347c1efd6e5e</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F10_2011_MBA</Title></TargetObject><TargetObject><Uuid>5755aa3a-87b3-4a5d-bdf1-b8a6c1ebdf36</Uuid><QualifiedType>resqml22.TriangulatedSetRepresentation</QualifiedType><Title>depthVolve_F52_2011_MBA</Title></TargetObject><ns2:UseLogarithmicMapping>false</ns2:UseLogarithmicMapping><ns2:UseReverseMapping>false</ns2:UseReverseMapping><ns2:ValueVectorIndex>5</ns2:ValueVectorIndex><ns2:ColorMap><Uuid>44920872-7f80-4fd9-992e-cd941f45c2e4</Uuid><QualifiedType>resqml22.DiscreteColorMap</QualifiedType><Title>DISCRETE COLOR MAP 0</Title></ns2:ColorMap></GraphicalInformation></GraphicalInformationSet>";
+
+        EPCPackageManager manager = new EPCPackageManager("energyml");
+        System.out.println(manager.unmarshal(graphical).getValue());
     }
 }

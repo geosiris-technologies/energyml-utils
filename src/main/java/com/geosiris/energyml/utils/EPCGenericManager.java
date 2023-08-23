@@ -331,7 +331,7 @@ public class EPCGenericManager {
                         }
                         sb.append("/");
                     }catch (Exception e) {
-                        logger.error("Error reading object version");
+                        logger.error("Error reading object version for " + ObjectController.getObjectAttributeValue(obj, "uuid"));
                     }
                     break;
                 case CLASSIC:
