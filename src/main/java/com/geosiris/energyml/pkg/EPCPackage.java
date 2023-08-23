@@ -171,7 +171,7 @@ public class EPCPackage {
     private JAXBElement<?> parseXmlFromContext(String xmlContent,
                                                boolean tryWithoutNamespaceIfFail,
                                                boolean testRemarshalling, // test to marshall/unmarshall after first unmarshall
-                                                                            // to verify if everything has been read correctly
+                                               // to verify if everything has been read correctly
                                                Schema schema) {
         ValidationEventCollector vec = null;
 
@@ -289,44 +289,29 @@ public class EPCPackage {
         final String typename = class22.getSimpleName();
 
         String[] listOfPotentialRemovablePrefix = { "Obj" };
-
         Class<?> classFactory22 = factory.getClass();
 
-        try {
-            Method create = classFactory22.getMethod("create" + typename, class22);
-            return (JAXBElement<?>) create.invoke(factory, energymlObject);
-        } catch (Exception e) {
-            for (String prefixToRemove : listOfPotentialRemovablePrefix) {
-                if (typename.startsWith(prefixToRemove)) {
-                    try {
-                        Method create = classFactory22.getMethod("create" + typename.substring(prefixToRemove.length()),
-                                class22);
-                        return (JAXBElement<?>) create.invoke(factory, energymlObject);
-                    } catch (Exception e2) {
-                        logger.error(e.getMessage(), e);
-                        logger.error(e2.getMessage(), e2);
-                    }
-                }
+        ArrayList<String> methodPotentialName = new ArrayList<>();
+        methodPotentialName.add("create" + typename);
+        methodPotentialName.add(typename.substring(0, 1).toLowerCase() + typename.substring(1));
+        for (String prefixToRemove : listOfPotentialRemovablePrefix) {
+            String noPrefix = typename.substring(prefixToRemove.length());
+            methodPotentialName.add("create" + noPrefix);
+            methodPotentialName.add(noPrefix.substring(0, 1).toLowerCase() + noPrefix.substring(1));
+        }
+
+        for(String m_name : methodPotentialName){
+            try {
+                Method m = classFactory22.getMethod(m_name, class22);
+                return (JAXBElement<?>) m.invoke(factory, energymlObject);
+            }catch (NoSuchMethodException e){
+                // pass
+            } catch (Exception e2) {
+                logger.error(e2.getMessage(), e2);
             }
         }
-        // Without "create" prefix
-        try {
-            Method create = classFactory22.getMethod(typename, class22);
-            return (JAXBElement<?>) create.invoke(factory, energymlObject);
-        } catch (Exception e) {
-            for (String prefixToRemove : listOfPotentialRemovablePrefix) {
-                if (typename.startsWith(prefixToRemove)) {
-                    try {
-                        Method create = classFactory22.getMethod(typename.substring(prefixToRemove.length()),
-                                class22);
-                        return (JAXBElement<?>) create.invoke(factory, energymlObject);
-                    } catch (Exception e2) {
-                        logger.error(e.getMessage(), e);
-                        logger.error(e2.getMessage(), e2);
-                    }
-                }
-            }
-        }
+        logger.error("No method found to create a type " + typename);
+        logger.error("Tested names " + methodPotentialName.stream().reduce((s1,s2) -> s1 + ", " + s2));
         return null;
     }
 
