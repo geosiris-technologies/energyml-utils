@@ -31,4 +31,15 @@ public class Pair<TL, TR> {
 	public TR r() {
 		return _r;
 	}
+
+	@Override
+	public boolean equals(Object b){
+		return b instanceof Pair
+				&& ((this._l == null && ((Pair<?, ?>)b)._l == null)
+					|| ((this._l != null && ((Pair<?, ?>)b)._l != null && this._l.equals(((Pair<?, ?>)b)._l)))
+				)
+				&& ((this._r == null && ((Pair<?, ?>)b)._r == null)
+					|| ((this._r != null && ((Pair<?, ?>)b)._r != null && this._r.equals(((Pair<?, ?>)b)._r)))
+				);
+	}
 }
