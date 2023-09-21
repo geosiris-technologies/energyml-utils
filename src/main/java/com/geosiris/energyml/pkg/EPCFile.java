@@ -15,10 +15,7 @@ limitations under the License.
 */
 package com.geosiris.energyml.pkg;
 
-import com.geosiris.energyml.utils.EPCGenericManager;
-import com.geosiris.energyml.utils.ExportVersion;
-import com.geosiris.energyml.utils.ObjectController;
-import com.geosiris.energyml.utils.Utils;
+import com.geosiris.energyml.utils.*;
 import energyml.content_types.Default;
 import energyml.content_types.Override;
 import energyml.content_types.Types;
@@ -53,9 +50,14 @@ public class EPCFile {
     Map<String, InputStream> otherFiles;
     Map<Object, List<Relationship>> additionalRels;
 
+    // Key is (Uuid;ObjectVersion)
+//    Map<Pair<String, String>, List<Relationship>> readRels;
+
     ExportVersion version;
     CoreProperties coreProperties;
     EPCPackageManager pkgManager;
+
+    String filePath;
 
     public EPCFile(EPCPackageManager pkgManager, ExportVersion version, CoreProperties coreProperties, Map<String, List<Object>> energymlObjects, Map<String, InputStream> otherFiles, Map<Object, List<Relationship>> additionalRels ) {
         this.energymlObjects = energymlObjects;
@@ -64,14 +66,20 @@ public class EPCFile {
         this.version = version;
         this.coreProperties = coreProperties;
         this.pkgManager = pkgManager;
+        this.filePath = null;
     }
 
-    public EPCFile(EPCPackageManager pkgManager, ExportVersion version,  CoreProperties coreProperties){
+    public EPCFile(EPCPackageManager pkgManager, ExportVersion version, CoreProperties coreProperties){
         this(pkgManager, version, coreProperties, new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
 
     public EPCFile(EPCPackageManager pkgManager, ExportVersion version){
         this(pkgManager, version, new CoreProperties());
+    }
+
+    public EPCFile(EPCPackageManager pkgManager, String filePath){
+        this(pkgManager);
+        this.filePath = filePath;
     }
 
     public EPCFile(EPCPackageManager pkgManager){
@@ -222,7 +230,7 @@ public class EPCFile {
         return version;
     }
 
-    private Map<Object, Relationships> computeRelations(){
+    public Map<Object, Relationships> computeRelations(){
         Map<Object, Relationships> relations = new HashMap<>();
 
         Map<Object, List<Object>> sourceRels = new HashMap<>();
@@ -294,6 +302,12 @@ public class EPCFile {
         return relations;
     }
 
+    public static EPCFile read(String filePath, EPCPackageManager pkgManager) throws FileNotFoundException {
+        EPCFile file = read(new FileInputStream(filePath), pkgManager);
+        file.filePath = filePath;
+        return file;
+    }
+
     public static EPCFile read(InputStream input, EPCPackageManager pkgManager){
         EPCFile epc = new EPCFile(pkgManager);
         byte[] buffer = new byte[2048];
@@ -335,7 +349,7 @@ public class EPCFile {
                     }else if (entry.getName().endsWith("." + OPCRelsPackage.getRelsExtension())){
                         Relationships rels = (Relationships) OPCRelsPackage.unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
                         String objPath = entry.getName()
-                                .substring(0, entry.getName().length() - 4)
+                                .substring(0, entry.getName().lastIndexOf(".")) // removing rels extension
                                 .replace(OPCRelsPackage.genRelsFolderPath(epc.version) + "/", "")
                                 .replace(OPCRelsPackage.genRelsFolderPath(epc.version) + "\\", "");
                         mapPathToRelationships.put(objPath, rels);
@@ -346,9 +360,22 @@ public class EPCFile {
             throw new RuntimeException(e);
         }
 
+//        if(epc.readRels == null){
+//            epc.readRels = new HashMap<>();
+//        }else {
+//            epc.readRels.clear();
+//        }
+
         for(Map.Entry<String, Relationships> rels: mapPathToRelationships.entrySet()) {
             if (mapPathToObject.containsKey(rels.getKey())){
                 Object target = mapPathToObject.get(rels.getKey());
+
+                Pair<String, String> obj_pair = new Pair<>((String) ObjectController.getObjectAttributeValue(target, "uuid"),
+                                (String) ObjectController.getObjectAttributeValue(target, "ObjectVersion"));
+//                if(!epc.readRels.containsKey(obj_pair)){
+//                    epc.readRels.put(obj_pair, new ArrayList<>());
+//                }
+//                epc.readRels.get(obj_pair).addAll(rels.getValue().getRelationship());
 
                 for(Relationship r: rels.getValue().getRelationship()){
                     if(EPCRelsRelationshipType.DestinationObject.getType() .compareToIgnoreCase(r.getType()) != 0
@@ -361,11 +388,62 @@ public class EPCFile {
                 }
             }else{
                 logger.error("Object " + rels.getKey() + " not found for rels");
+                    for(String k: mapPathToObject.keySet()){
+                        logger.info("\t" + k + " ==> " + mapPathToObject.containsKey(rels.getKey()) + "--" + mapPathToObject.get(rels.getKey()));
+                    }
             }
         }
-        logger.info("EPC " + epc.energymlObjects.size());
+        logger.debug("EPC " + epc.energymlObjects.size());
 
         epc.version = foundNamespaceFolder ? ExportVersion.EXPANDED : ExportVersion.CLASSIC;
         return epc;
+    }
+
+//    public String findNumericalDataLocation(String uuid, String objectVersion){
+//        Object related = getObject(uuid, objectVersion);
+//        if(related != null){
+//            Relationships rels = computeRelations().get(related);
+//            for(Relationship rel : rels.getRelationship()){
+//                if(rel.getType().compareToIgnoreCase(EPCRelsRelationshipType.ExternalResource.label) == 0){
+//                    if(rel.getTarget().toLowerCase().endsWith(".h5") || rel.getTarget().toLowerCase().endsWith(".hdf5")){
+//                        return rel.getTarget();
+//                    }
+//                }
+//            }
+//            List<Object> references = new ArrayList<>();
+//            references.addAll(ObjectController.findAllAttributesFromName(related, "EpcExternalPartReference", true, false));
+//            references.addAll(ObjectController.findAllAttributesFromName(related, "HdfProxy", true, false));
+//
+//            for(Object ref: references){
+//
+//            }
+//        }
+//        return null;
+//    }
+
+    /* --------------------------------------------------- */
+
+    public Map<String, List<Object>> getEnergymlObjects() {
+        return energymlObjects;
+    }
+
+    public Map<String, InputStream> getOtherFiles() {
+        return otherFiles;
+    }
+
+    public Map<Object, List<Relationship>> getAdditionalRels() {
+        return additionalRels;
+    }
+
+//    public Map<Pair<String, String>, List<Relationship>> getReadRels() {
+//        return readRels;
+//    }
+
+    public ExportVersion getVersion() {
+        return version;
+    }
+
+    public CoreProperties getCoreProperties() {
+        return coreProperties;
     }
 }

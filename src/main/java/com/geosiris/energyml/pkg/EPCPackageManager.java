@@ -600,7 +600,7 @@ public class EPCPackageManager {
 
         for (EPCPackage pkg : PKG_LIST) {
             try {
-                logger.info("@getClassesComment " + pkg);
+                logger.debug("@getClassesComment " + pkg);
                 result.putAll(Utils.readJsonFileOrRessource(xsdCommentsFolderPath + pkg.getPackageName() + ".json",
                         HashMap.class));
             } catch (Exception ignore) {

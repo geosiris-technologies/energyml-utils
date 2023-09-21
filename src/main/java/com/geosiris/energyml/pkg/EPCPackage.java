@@ -34,6 +34,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -102,7 +103,12 @@ public class EPCPackage {
     }
 
     public List<Class<?>> getRootsElementsClasses() {
-        return pkgClasses.stream().filter(EPCGenericManager::isRootClass).collect(Collectors.toList());
+        // return pkgClasses.stream().filter(EPCGenericManager::isRootClass).collect(Collectors.toList()); OLD Way, but it includes types with no "createMY_TYPE_NAME(MY_TYPE value) -> JaxbElement" functions
+        Object objFactory = getObjectFactory();
+        return Arrays.stream(objFactory.getClass().getMethods())
+                .filter(m -> m.getReturnType() == JAXBElement.class && m.getParameterCount() == 1)
+                .map(m->m.getParameters()[0].getType())
+                .collect(Collectors.toList());
     }
 
     public Object createInstance(String className) {
@@ -295,9 +301,11 @@ public class EPCPackage {
         methodPotentialName.add("create" + typename);
         methodPotentialName.add(typename.substring(0, 1).toLowerCase() + typename.substring(1));
         for (String prefixToRemove : listOfPotentialRemovablePrefix) {
-            String noPrefix = typename.substring(prefixToRemove.length());
-            methodPotentialName.add("create" + noPrefix);
-            methodPotentialName.add(noPrefix.substring(0, 1).toLowerCase() + noPrefix.substring(1));
+            if(typename.startsWith(prefixToRemove)) {
+                String noPrefix = typename.substring(prefixToRemove.length());
+                methodPotentialName.add("create" + noPrefix);
+                methodPotentialName.add(noPrefix.substring(0, 1).toLowerCase() + noPrefix.substring(1));
+            }
         }
 
         for(String m_name : methodPotentialName){
