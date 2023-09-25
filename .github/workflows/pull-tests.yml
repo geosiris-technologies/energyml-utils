@@ -30,9 +30,6 @@ jobs:
       name: Install gpg secret key
       run: cat <(echo -e "${{ secrets.OSSRH_GPG_SECRET_KEY }}") | gpg --batch --import
 
-    - name: Change version to tag name
-      run: mvn versions:set -DnewVersion="${{ github.event.release.tag_name }}"
-          
     - name: Unit test
       run: |
         PROJECT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
