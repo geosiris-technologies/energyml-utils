@@ -446,4 +446,8 @@ public class EPCFile {
     public CoreProperties getCoreProperties() {
         return coreProperties;
     }
+
+    public String getFilePath() {
+        return filePath;
+    }
 }
