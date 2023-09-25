@@ -59,6 +59,14 @@ public class ObjectControllerTest {
     }
 
     @Test
+    void test_access_path_depth_1_rgx(){
+        List<Object> res = ObjectController.getObjectAttributeValueRgx(objTest, "attr[\\d]+");
+        assert res.size() == 2;
+        assert ((Integer) res.get(0)) == 42;
+        assert (Boolean) res.get(1);
+    }
+
+    @Test
     void test_has_attribute(){
         assert ObjectController.hasAttribute(objTest, "attr0");
         assert ObjectController.hasAttribute(objTest, "attr1");
@@ -84,6 +92,13 @@ public class ObjectControllerTest {
         assert ((String) ObjectController.getObjectAttributeValue(objTest, "lst0.1")).compareTo(" ") == 0;
         assert ((String) ObjectController.getObjectAttributeValue(objTest, "lst0.2")).compareTo("world") == 0;
         assert ((String) ObjectController.getObjectAttributeValue(objTest, "lst0.3")).compareTo("!") == 0;
+    }
+
+    @Test
+    void test_access_path_depth_2_list_rgx(){
+        List<Object> res = ObjectController.getObjectAttributeValueRgx(objTest, "lst0.*");
+        assert res.size() == 4;
+        assert res.get(2) == "world";
     }
 
     @Test

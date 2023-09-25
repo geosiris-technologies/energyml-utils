@@ -24,6 +24,8 @@ import javax.xml.datatype.XMLGregorianCalendar;
 import java.lang.reflect.*;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ObjectController {
@@ -734,6 +736,79 @@ public class ObjectController {
 
         if (result != null && pathAttribute.contains(".")) {
             return getObjectAttributeValue(result, pathAttribute.substring(attribute.length() + 1));
+        } else {
+            return result;
+        }
+    }
+
+    public static List<Method> getAttributeAccessMethodRgx(Object obj, String attributeRgx){
+        List<Method> res = new ArrayList<>();
+        Pattern pat = Pattern.compile("(get|is)?" + attributeRgx, Pattern.CASE_INSENSITIVE);
+        for(Method m : obj.getClass().getMethods()){
+            if (m.getParameterCount() == 0) {
+                Matcher matcher = pat.matcher(m.getName());
+                if (matcher.find()) {
+                    res.add(m);
+                }
+            }
+        }
+        res = res.stream().sorted(Comparator.comparing(Method::getName)).collect(Collectors.toList());
+        return res;
+    }
+
+    public static List<Object> getObjectAttributeValueRgx(Object obj, String pathAttribute) {
+        String attribute = pathAttribute;
+        while (attribute.startsWith(".")) {
+            attribute = attribute.substring(1);
+        }
+        pathAttribute = attribute;
+        if (attribute.contains("."))
+            attribute = attribute.substring(0, attribute.indexOf("."));
+
+        List result = new ArrayList();
+        // Cas des indices de liste
+        if (attribute.replaceAll("[\\d]+", "").length() == 0) {
+            try {
+                result.add(obj.getClass().getMethod("get", int.class).invoke(obj, Integer.parseInt(attribute)));
+            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
+                     | NoSuchMethodException | SecurityException e) {
+                logger.debug(e.getMessage(), e);
+                for (Method m : obj.getClass().getMethods()) {
+                    logger.debug(m);
+                }
+            }
+        }else if (attribute.equals("*") && obj instanceof Collection) {
+            result.addAll((Collection)obj);
+        }else if(obj instanceof Map) {
+            Map<String, ?> map_obj = (Map) obj;
+            if(attribute.matches("[\\w]+") && map_obj.containsKey(attribute)){ // Optimization if not a regex but a simple word
+                result.add(map_obj.get(attribute));
+            }else{
+                Pattern patAttribute = Pattern.compile(attribute);
+                for(String k : map_obj.keySet()){
+                    Matcher matcher = patAttribute.matcher(k);
+                    if(matcher.find()) {
+                        result.add(map_obj.get(k));
+                    }
+                }
+            }
+        }else {
+            // Si pas un entier on a une exception donc ce n'est pas une liste
+            for(Method m : getAttributeAccessMethodRgx(obj, attribute)){
+                try {
+                    result.add(m.invoke(obj));
+                } catch (Exception e) {
+                    logger.debug(e.getMessage(), e);
+                    logger.debug("obj was " + obj + " path was '" + pathAttribute + "' and attribute " + " '" + attribute + "'");
+                }
+            }
+        }
+
+        if (pathAttribute.contains(".")) {
+            final String nextAttribt = pathAttribute.substring(attribute.length() + 1);
+            List<Object> flatten = new ArrayList<>();
+            result.stream().map(r -> getObjectAttributeValueRgx(r, nextAttribt)).forEach(l -> flatten.addAll((List<Object>) l));
+            return flatten;
         } else {
             return result;
         }
