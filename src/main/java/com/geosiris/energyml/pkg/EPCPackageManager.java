@@ -16,19 +16,19 @@ limitations under the License.
 package com.geosiris.energyml.pkg;
 
 import com.geosiris.energyml.exception.EPCPackageInitializationException;
-import com.geosiris.energyml.utils.ContextBuilder;
-import com.geosiris.energyml.utils.EPCGenericManager;
-import com.geosiris.energyml.utils.ObjectController;
-import com.geosiris.energyml.utils.Utils;
+import com.geosiris.energyml.utils.*;
 import jakarta.xml.bind.JAXBElement;
 import jakarta.xml.bind.JAXBException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -36,7 +36,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -59,11 +58,15 @@ public class EPCPackageManager {
     private final String accessibleDORFilePath;
     public final List<EPCPackage> PKG_LIST;
 
+    public EPCPackageManager(){
+        this("energyml");
+    }
+
     public EPCPackageManager(String energymlPkgPrefix){
         this(initPkgList(energymlPkgPrefix, null), null, null);
     }
     public EPCPackageManager(String energymlPkgPrefix, String xsdCommentsFolderPath, String accessibleDORFilePath,
-            String xsdMappingFilePath) {
+                             String xsdMappingFilePath) {
         this(initPkgList(energymlPkgPrefix, xsdMappingFilePath), xsdCommentsFolderPath, accessibleDORFilePath);
     }
 
@@ -82,9 +85,9 @@ public class EPCPackageManager {
             this.accessibleDORFilePath = "";
         }
         this.PKG_LIST = pkgList;
-        logger.info("EPCPackageManager initialized found packages :");
+        logger.debug("EPCPackageManager initialized found packages :");
         for(EPCPackage pkg : pkgList){
-            logger.info(pkg.getPackageName() + " nb class found " + pkg.getPkgClasses().size());
+            logger.debug(pkg.getPackageName() + " nb class found " + pkg.getPkgClasses().size());
         }
     }
 
@@ -147,14 +150,14 @@ public class EPCPackageManager {
     }
 
     public Boolean hasDevVersion(EPCPackage refPkg) {
-            for (EPCPackage pkg : PKG_LIST) {
-                if (pkg.getDomain().compareToIgnoreCase(refPkg.getDomain()) == 0
-                        && pkg.getPackagePath().compareTo(refPkg.getPackagePath()) !=0
-                        && pkg.getVersionNum().compareTo(refPkg.getVersionNum()) == 0
-                        && pkg.isDevVersion()) {
-                    return true;
-                }
+        for (EPCPackage pkg : PKG_LIST) {
+            if (pkg.getDomain().compareToIgnoreCase(refPkg.getDomain()) == 0
+                    && pkg.getPackagePath().compareTo(refPkg.getPackagePath()) !=0
+                    && pkg.getVersionNum().compareTo(refPkg.getVersionNum()) == 0
+                    && pkg.isDevVersion()) {
+                return true;
             }
+        }
         return false;
     }
 
@@ -162,35 +165,63 @@ public class EPCPackageManager {
         return PKG_LIST.stream().map(EPCPackage::getPackagePath).collect(Collectors.toList());
     }
 
-    public JAXBElement<?> unmarshal(String xmlContent) {
-        String schemaVersionFound = null;
-        Matcher matcherXMLSchemaV = PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE.matcher(xmlContent);
-        if (matcherXMLSchemaV.find()) {
-            schemaVersionFound = EPCGenericManager.reformatSchemaVersion(matcherXMLSchemaV.group("schemaVersion"));
-            logger.info("SchemaVersionFound " + schemaVersionFound);
+    public static Pair<String, String> getNamespaceAndObjVersion(String xmlContent){
+        try {
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setNamespaceAware(true);
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+
+            Document doc = dBuilder.parse(new InputSource(new StringReader(xmlContent)));
+            String version = null;
+            NamedNodeMap nnm = doc.getFirstChild().getAttributes();
+            for(int ai=0; ai < nnm.getLength(); ai++){
+                Node node = nnm.item(ai);
+                if(node.getNodeName().compareToIgnoreCase("schemaVersion") == 0){
+                    version = node.getNodeValue();
+                }
+            }
+            return new Pair<>(doc.getFirstChild().getNamespaceURI(), EPCGenericManager.reformatSchemaVersion(version));
+        } catch (Exception e) {
+            logger.error(e);
+            e.printStackTrace();
         }
+        return null;
+    }
+
+    public JAXBElement<?> unmarshal(String xmlContent) {
+        Pair<String, String> nsAndVers = null;
+        try{
+            nsAndVers = getNamespaceAndObjVersion(xmlContent);
+        }catch (Exception ignore){}
+        logger.debug("Ns and version found {}", nsAndVers);
+
         for (EPCPackage pkg : PKG_LIST) {
-            if (schemaVersionFound == null || pkg.getVersionNum().compareToIgnoreCase(schemaVersionFound) == 0) {
-                logger.info("Trying to read with " + pkg.getPackagePath());
+            if (nsAndVers == null || nsAndVers.r() == null
+                    || (pkg.getVersionNum().contains(nsAndVers.r()) && pkg.matchNamespace(nsAndVers.l()))
+            ) {
+                logger.debug("Trying to read with " + pkg.getPackagePath());
                 try {
                     JAXBElement<?> obj = pkg.parseXmlContent(xmlContent, hasDevVersion(pkg));
                     if (obj != null) {
-                        logger.info("Unmarshalled with pkg : " + pkg.getPackagePath());
+                        logger.debug("Unmarshalled with pkg : " + pkg.getPackagePath());
                         return obj;
                     }
                 }catch (Exception e){
                     logger.debug(e.getMessage(), e);
                 }
             }
+//            else{
+//                logger.debug("NotSelected {} {}", pkg.getPackagePath(), pkg.getVersionNum());
+//            }
         }
         // Testing with other package if failed with pkg matching schemaVersion
-        if (schemaVersionFound != null) {
+        if (nsAndVers != null && nsAndVers.r() != null) {
             for (EPCPackage pkg : PKG_LIST) {
-                if (pkg.getVersionNum().compareToIgnoreCase(schemaVersionFound) != 0) {
+                if (pkg.getVersionNum().compareToIgnoreCase(nsAndVers.r()) != 0) {
                     try {
                         JAXBElement<?> obj = pkg.parseXmlContent(xmlContent, true);
                         if (obj != null) {
-                            logger.info("Unmarshalled with pkg : " + pkg.getPackagePath());
+                            logger.debug("Unmarshalled with pkg : " + pkg.getPackagePath());
                             return obj;
                         }
                     }catch (Exception e){
@@ -234,17 +265,17 @@ public class EPCPackageManager {
     }
 
     public Object createInstance(String objClassName, Map<String, Object> epcObjects,
-            Object value, boolean nullable) {
+                                 Object value, boolean nullable) {
         return createInstance(objClassName, epcObjects, value, null, nullable);
     }
 
     public Object createInstance(String objClassName, Map<String, Object> epcObjects,
-            Object value) {
+                                 Object value) {
         return createInstance(objClassName, epcObjects, value, null, true);
     }
 
     public Object createInstance(String objClassName, Map<String, Object> epcObjects,
-            Object value, String userName, boolean nullable) {
+                                 Object value, String userName, boolean nullable) {
         Object objInstance = null;
         String objClassLower = objClassName.toLowerCase();
 
@@ -270,7 +301,7 @@ public class EPCPackageManager {
                         objInstance = objectClass.getEnumConstants()[0];
                     }
                 } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
-                        | InvocationTargetException e) {
+                         | InvocationTargetException e) {
                     for (Object enumVal : objectClass.getEnumConstants()) {
                         if ((enumVal + "").compareTo(value + "") == 0) {
                             objInstance = enumVal;
@@ -391,7 +422,7 @@ public class EPCPackageManager {
     }
 
     public Object modifyNewInstance(Object instance, Map<String, Object> epcObjects, Object value,
-            String userName) {
+                                    String userName) {
         logger.error("Modifying instance " + instance);
         if (instance != null) {
             String objClassNameLower = instance.getClass().getName().toLowerCase();
@@ -587,7 +618,7 @@ public class EPCPackageManager {
     public List<Class<?>> getInheritorClasses(String rootClassName) {
         Class<?> rootClass = getClassFromName(rootClassName);
         return getClasses().stream().filter(
-                objClass -> !Modifier.isAbstract(objClass.getModifiers()) && rootClass.isAssignableFrom(objClass))
+                        objClass -> !Modifier.isAbstract(objClass.getModifiers()) && rootClass.isAssignableFrom(objClass))
                 .collect(Collectors.toList());
     }
 

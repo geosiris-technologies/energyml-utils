@@ -39,13 +39,13 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-public class EPCFile {
+public class EPCFile implements EnergymlWorkspace{
     public static Logger logger = LogManager.getLogger(EPCFile.class);
 
     /**
-     * Energyml files mapped by Uuid. The different versions of the object identified by the Uuid are stored in a list.
+     * Energyml files mapped by <Identifier>. The different versions of the object identified by the identifier (see. @getIdentifier) are stored in a list.
      */
-    Map<String, List<Object>> energymlObjects;
+    Map<String, Object> energymlObjects;
 
     Map<String, InputStream> otherFiles;
     Map<Object, List<Relationship>> additionalRels;
@@ -59,7 +59,7 @@ public class EPCFile {
 
     String filePath;
 
-    public EPCFile(EPCPackageManager pkgManager, ExportVersion version, CoreProperties coreProperties, Map<String, List<Object>> energymlObjects, Map<String, InputStream> otherFiles, Map<Object, List<Relationship>> additionalRels ) {
+    public EPCFile(EPCPackageManager pkgManager, ExportVersion version, CoreProperties coreProperties, Map<String, Object> energymlObjects, Map<String, InputStream> otherFiles, Map<Object, List<Relationship>> additionalRels ) {
         this.energymlObjects = energymlObjects;
         this.otherFiles = otherFiles;
         this.additionalRels = additionalRels;
@@ -122,13 +122,13 @@ public class EPCFile {
             zos.closeEntry();
 
             // Energyml Objects
-            for(String uuid : energymlObjects.keySet()){
+            for(String identifier : energymlObjects.keySet()){
                 List<Object> toImport = new ArrayList<>();
                 if(this.version == ExportVersion.CLASSIC){
                     // Only import the last version
-                    toImport.add(getLastModifiedObject(uuid));
+                    toImport.add(getLastModifiedObject(identifier));
                 }else{
-                    toImport.addAll(energymlObjects.get(uuid));
+                    toImport.add(energymlObjects.get(identifier));
                 }
 
                 for(Object o : toImport){
@@ -189,45 +189,53 @@ public class EPCFile {
     }
 
     public Object getLastModifiedObject(String uuid){
-        if(energymlObjects.containsKey(uuid)){
-            List<Object> objects = energymlObjects.get(uuid);
-            objects.sort((a, b) -> {
-                XMLGregorianCalendar a_lastModif = (XMLGregorianCalendar) ObjectController.getObjectAttributeValue(a,"Citation.LastUpdate");
-                XMLGregorianCalendar b_lastModif = (XMLGregorianCalendar) ObjectController.getObjectAttributeValue(b,"Citation.LastUpdate");
-                if(a_lastModif == null){
-                    return 1;
-                } else if (b_lastModif == null) {
-                    return -1;
-                }else{
-                    return b_lastModif.compare(a_lastModif);
-                }
-            });
-            if(objects.size() > 0){
-                return objects.get(0);
-            }
+        List<Object> objects = energymlObjects.entrySet().stream()
+                .filter(e -> uuid.equals(getUuidFromIdentifier(e.getKey())))
+                .sorted((a, b) -> {
+                    XMLGregorianCalendar a_lastModif = (XMLGregorianCalendar) ObjectController.getObjectAttributeValue(a, "Citation.LastUpdate");
+                    XMLGregorianCalendar b_lastModif = (XMLGregorianCalendar) ObjectController.getObjectAttributeValue(b, "Citation.LastUpdate");
+                    if (a_lastModif == null) {
+                        return 1;
+                    } else if (b_lastModif == null) {
+                        return -1;
+                    } else {
+                        return b_lastModif.compare(a_lastModif);
+                    }
+                }).collect(Collectors.toList());
+        if(objects.size() > 0){
+            return objects.get(0);
         }
         return null;
     }
 
     public Object getObject(String uuid, String objectVersion){
-        if(energymlObjects.containsKey(uuid)){
-            for(Object o: energymlObjects.get(uuid)){
-                if(ObjectController.getObjectAttributeValue(o, "ObjectVersion") == objectVersion){
-                    return o;
-                }
-            }
+        String identifier = getIdentifier(uuid, objectVersion);
+        return getObjectByIdentifier(identifier);
+    }
+
+    @java.lang.Override
+    public Object getObjectByIdentifier(String identifier) {
+        if(energymlObjects.containsKey(identifier)){
+            return energymlObjects.get(identifier);
         }
         return null;
     }
 
+    @java.lang.Override
+    public Object getObjectByUUID(String uuid) {
+        return getObject(uuid, null);
+    }
+
+    @java.lang.Override
+    public List<?> readExternalArray(Object energyml_array, Object root_obj, String pathInRoot) {
+        return List.of();
+    }
+
     public List<String> getAllVersions(String uuid){
-        List<String> version = new ArrayList<>();
-        if(energymlObjects.containsKey(uuid)){
-            for(Object o: energymlObjects.get(uuid)){
-                version.add((String) ObjectController.getObjectAttributeValue(o, "ObjectVersion"));
-            }
-        }
-        return version;
+        return energymlObjects.keySet().stream()
+            .filter(o -> uuid.equals(getUuidFromIdentifier(o)))
+                .map(EPCFile::getObjVersionFromIdentifier)
+                .collect(Collectors.toList());
     }
 
     public Map<Object, Relationships> computeRelations(){
@@ -236,66 +244,61 @@ public class EPCFile {
         Map<Object, List<Object>> sourceRels = new HashMap<>();
         Map<Object, List<Object>> destRels = new HashMap<>();
 
-        for(List<Object> objList: this.energymlObjects.values()){
-            for(Object o: objList){
-                destRels.put(o, ObjectController.findSubObjects(o, "DataObjectReference", true).stream()
-                        .map(obj -> {
-                            try{
-                                Object rel = getObject((String) ObjectController.getObjectAttributeValue(obj, "uuid"),
-                                        (String) ObjectController.getObjectAttributeValue(obj, "ObjectVersion"));
-                                if(!sourceRels.containsKey(rel)){
-                                    sourceRels.put(rel, new ArrayList<>());
-                                }
-                                sourceRels.get(rel).add(o);
-                                return rel;
-                            }catch (Exception ignore){}
-                            return null;
-                        }).filter(Objects::nonNull)
-                        .collect(Collectors.toList()));
-            }
+        for(Object o: this.energymlObjects.values()){
+            destRels.put(o, ObjectController.findSubObjects(o, "DataObjectReference", true).stream()
+                    .map(obj -> {
+                        try{
+                            Object rel = getObjectByIdentifier(getIdentifier(obj));
+                            if(!sourceRels.containsKey(rel)){
+                                sourceRels.put(rel, new ArrayList<>());
+                            }
+                            sourceRels.get(rel).add(o);
+                            return rel;
+                        }catch (Exception ignore){}
+                        return null;
+                    }).filter(Objects::nonNull)
+                    .collect(Collectors.toList()));
         }
 
-        for(List<Object> objList: this.energymlObjects.values()){
-            for(Object o: objList) {
-                Path o_parentFolder = Paths.get(EPCGenericManager.genPathInEPC(o, version)).getParent();
-                Relationships rels = new Relationships();
-                relations.put(o, rels);
-                if (sourceRels.containsKey(o)){
-                    for(Object source: new HashSet<>(sourceRels.get(o))){
-                        String s_uuid = (String) ObjectController.getObjectAttributeValue(source, "uuid");
-                        String s_objVersion = (String) ObjectController.getObjectAttributeValue(source, "ObjectVersion");
-                        Relationship rel = new Relationship();
-                        rel.setType(EPCRelsRelationshipType.SourceObject.getType());
-                        rel.setId(URLEncoder.encode(s_uuid + (s_objVersion!= null ? "_" + s_objVersion : ""), Charset.defaultCharset()));
-                        if(o_parentFolder != null) {
-                            rel.setTarget(o_parentFolder.relativize(Paths.get(EPCGenericManager.genPathInEPC(source, version))).toString());
-                        }else{
-                            rel.setTarget(EPCGenericManager.genPathInEPC(source, version));
-                        }
-                        rels.getRelationship().add(rel);
+        for(Object o: this.energymlObjects.values()){
+            Path o_parentFolder = Paths.get(EPCGenericManager.genPathInEPC(o, version)).getParent();
+            Relationships rels = new Relationships();
+            relations.put(o, rels);
+            if (sourceRels.containsKey(o)){
+                for(Object source: new HashSet<>(sourceRels.get(o))){
+                    String s_uuid = getUuid(source);
+                    String s_objVersion = (String) ObjectController.getObjectAttributeValue(source, "ObjectVersion");
+                    Relationship rel = new Relationship();
+                    rel.setType(EPCRelsRelationshipType.SourceObject.getType());
+                    rel.setId(URLEncoder.encode(s_uuid + (s_objVersion!= null ? "_" + s_objVersion : ""), Charset.defaultCharset()));
+                    if(o_parentFolder != null) {
+                        rel.setTarget(o_parentFolder.relativize(Paths.get(EPCGenericManager.genPathInEPC(source, version))).toString());
+                    }else{
+                        rel.setTarget(EPCGenericManager.genPathInEPC(source, version));
                     }
+                    rels.getRelationship().add(rel);
                 }
+            }
 
-                if (destRels.containsKey(o)){
-                    for(Object dest: new HashSet<>(destRels.get(o))){
-                        String s_uuid = (String) ObjectController.getObjectAttributeValue(dest, "uuid");
-                        String s_objVersion = (String) ObjectController.getObjectAttributeValue(dest, "ObjectVersion");
-                        Relationship rel = new Relationship();
-                        rel.setType(EPCRelsRelationshipType.DestinationObject.getType());
-                        rel.setId(URLEncoder.encode(s_uuid + (s_objVersion!= null ? "_" + s_objVersion : ""), Charset.defaultCharset()));
-                        if(o_parentFolder != null) {
-                            rel.setTarget(o_parentFolder.relativize(Paths.get(EPCGenericManager.genPathInEPC(dest, version))).toString());
-                        }else{
-                            rel.setTarget(EPCGenericManager.genPathInEPC(dest, version));
-                        }
-                        rels.getRelationship().add(rel);
+            if (destRels.containsKey(o)){
+                for(Object dest: new HashSet<>(destRels.get(o))){
+                    String s_uuid = getUuid(dest);
+                    String s_objVersion = (String) ObjectController.getObjectAttributeValue(dest, "ObjectVersion");
+                    Relationship rel = new Relationship();
+                    rel.setType(EPCRelsRelationshipType.DestinationObject.getType());
+                    rel.setId(URLEncoder.encode(s_uuid + (s_objVersion!= null ? "_" + s_objVersion : ""), Charset.defaultCharset()));
+                    if(o_parentFolder != null) {
+                        rel.setTarget(o_parentFolder.relativize(Paths.get(EPCGenericManager.genPathInEPC(dest, version))).toString());
+                    }else{
+                        rel.setTarget(EPCGenericManager.genPathInEPC(dest, version));
                     }
+                    rels.getRelationship().add(rel);
                 }
-
-                if (additionalRels.containsKey(o)){
-                    for(Relationship r: additionalRels.get(o)){
-                        rels.getRelationship().add(r);
-                    }
+            }
+            String oId = getIdentifier(o);
+            if (additionalRels.containsKey(oId)){
+                for(Relationship r: additionalRels.get(oId)){
+                    rels.getRelationship().add(r);
                 }
             }
         }
@@ -328,7 +331,7 @@ public class EPCFile {
 
                 // Other files
                 if(!entry.isDirectory() ) {
-                    logger.info("Reading " + entry.getName());
+                    logger.debug("Reading " + entry.getName());
                     if (corePath.compareToIgnoreCase(entry.getName()) == 0) {
                         epc.coreProperties = (CoreProperties) OPCCorePackage.unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
                     }else if (entry.getName().compareToIgnoreCase(OPCContentType.genContentTypePath()) == 0) {
@@ -336,16 +339,16 @@ public class EPCFile {
                     }else if (entry.getName().endsWith(".xml")){
                         try{
                             Object o = pkgManager.unmarshal(entryBOS.toByteArray()).getValue();
-                            String uuid = (String) ObjectController.getObjectAttributeValue(o, "uuid");
-                            if(!epc.energymlObjects.containsKey(uuid)){
-                                epc.energymlObjects.put(uuid, new ArrayList<>());
+                            String identifier = getIdentifier(o);
+                            if(epc.energymlObjects.containsKey(identifier)){
+                                logger.debug("Duplicate object found for identifier {}", identifier);
                             }
-                            epc.energymlObjects.get(uuid).add(o);
+                            epc.energymlObjects.put(identifier, o);
                             mapPathToObject.put(entry.getName(), o);
                             if(entry.getName().toLowerCase().startsWith("namespace_")){
                                 foundNamespaceFolder = true;
                             }
-                        }catch (Exception e){logger.error(e);};
+                        }catch (Exception e){logger.error("Error for {}: {}", entry.getName(), e);e.printStackTrace();};
                     }else if (entry.getName().endsWith("." + OPCRelsPackage.getRelsExtension())){
                         Relationships rels = (Relationships) OPCRelsPackage.unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
                         String objPath = entry.getName()
@@ -360,18 +363,13 @@ public class EPCFile {
             throw new RuntimeException(e);
         }
 
-//        if(epc.readRels == null){
-//            epc.readRels = new HashMap<>();
-//        }else {
-//            epc.readRels.clear();
-//        }
-
         for(Map.Entry<String, Relationships> rels: mapPathToRelationships.entrySet()) {
             if (mapPathToObject.containsKey(rels.getKey())){
                 Object target = mapPathToObject.get(rels.getKey());
+                String targId = getIdentifier(target);
 
                 Pair<String, String> obj_pair = new Pair<>((String) ObjectController.getObjectAttributeValue(target, "uuid"),
-                                (String) ObjectController.getObjectAttributeValue(target, "ObjectVersion"));
+                        (String) ObjectController.getObjectAttributeValue(target, "ObjectVersion"));
 //                if(!epc.readRels.containsKey(obj_pair)){
 //                    epc.readRels.put(obj_pair, new ArrayList<>());
 //                }
@@ -380,17 +378,17 @@ public class EPCFile {
                 for(Relationship r: rels.getValue().getRelationship()){
                     if(EPCRelsRelationshipType.DestinationObject.getType() .compareToIgnoreCase(r.getType()) != 0
                             && EPCRelsRelationshipType.SourceObject.getType().compareToIgnoreCase(r.getType()) != 0){
-                        if(!epc.additionalRels.containsKey(target)){
-                            epc.additionalRels.put(target, new ArrayList<>());
+                        if(!epc.additionalRels.containsKey(targId)){
+                            epc.additionalRels.put(targId, new ArrayList<>());
                         }
-                        epc.additionalRels.get(target).add(r);
+                        epc.additionalRels.get(targId).add(r);
                     }
                 }
             }else{
                 logger.error("Object " + rels.getKey() + " not found for rels");
-                    for(String k: mapPathToObject.keySet()){
-                        logger.info("\t" + k + " ==> " + mapPathToObject.containsKey(rels.getKey()) + "--" + mapPathToObject.get(rels.getKey()));
-                    }
+                for(String k: mapPathToObject.keySet()){
+                    logger.debug("\t" + k + " ==> " + mapPathToObject.containsKey(rels.getKey()) + "--" + mapPathToObject.get(rels.getKey()));
+                }
             }
         }
         logger.debug("EPC " + epc.energymlObjects.size());
@@ -423,7 +421,7 @@ public class EPCFile {
 
     /* --------------------------------------------------- */
 
-    public Map<String, List<Object>> getEnergymlObjects() {
+    public Map<String, Object> getEnergymlObjects() {
         return energymlObjects;
     }
 
@@ -449,5 +447,60 @@ public class EPCFile {
 
     public String getFilePath() {
         return filePath;
+    }
+
+    public String getEpcFileFolder() {
+        if (filePath != null && filePath.length() > 0) {
+            return Paths.get(filePath).getParent().toString();
+        }
+        return null;
+    }
+
+    public static String getUuid(Object obj){
+        return (String) ObjectController.getObjectAttributeValueRgx(obj, "uuid").get(0);
+    }
+
+    public static String getSchemaVersion(Object obj){
+        return (String) ObjectController.getObjectAttributeValue(obj, "schemaVersion");
+    }
+
+    public static String getObjectVersion(Object obj){
+        try {
+            return (String) ObjectController.getObjectAttributeValueRgx(obj, "objectVersion|versionString").get(0);
+        }catch (Exception e){
+            logger.error("@getObjectVersion {}", e);
+        }
+        return null;
+//        return (String) ObjectController.getObjectAttributeValue(obj, "objectVersion");
+    }
+
+    /**
+     * Generates an objet identifier as : 'OBJ_UUID.OBJ_VERSION'
+     * If the object version is None, the result is 'OBJ_UUID.'
+     * @param obj
+     * @return
+     */
+    public static String getIdentifier(Object obj){
+        String objVersion = getObjectVersion(obj);
+        if (objVersion == null) {
+            objVersion = "";
+        }
+        String objUuid = getUuid(obj);
+        return getIdentifier(objUuid, objVersion);
+    }
+
+    public static String getIdentifier(String uuid, String objVersion){
+        return uuid + "." + (objVersion != null ? objVersion: "");
+    }
+
+    public static String getUuidFromIdentifier(String identifier){
+        return identifier.substring(0, identifier.indexOf("."));
+    }
+
+    public static String getObjVersionFromIdentifier(String identifier){
+        String version = identifier.substring(identifier.indexOf(".") + 1);
+        if(!version.isEmpty())
+            return version;
+        return null;
     }
 }

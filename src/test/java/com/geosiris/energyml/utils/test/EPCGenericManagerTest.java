@@ -15,20 +15,14 @@ limitations under the License.
 */
 package com.geosiris.energyml.utils.test;
 
-import com.geosiris.energyml.pkg.EPCFile;
-import com.geosiris.energyml.pkg.EPCPackageManager;
-import com.geosiris.energyml.utils.*;
+import com.geosiris.energyml.utils.EPCGenericManager;
+import com.geosiris.energyml.utils.ExportVersion;
+import com.geosiris.energyml.utils.ObjectController;
+import com.geosiris.energyml.utils.Utils;
 import energyml.common2_3.Citation;
-import energyml.relationships.Relationship;
-import energyml.relationships.Relationships;
 import energyml.resqml2_2.TriangulatedSetRepresentation;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Matcher;

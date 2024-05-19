@@ -42,4 +42,9 @@ public class Pair<TL, TR> {
 					|| ((this._r != null && ((Pair<?, ?>)b)._r != null && this._r.equals(((Pair<?, ?>)b)._r)))
 				);
 	}
+
+	@Override
+	public String toString(){
+		return "(" + _l + " ; " + _r + ")";
+	}
 }

@@ -4,7 +4,7 @@
     <groupId>com.geosiris</groupId>
     <artifactId>energyml-utils</artifactId>
     <name>${project.groupId}:${project.artifactId}</name>
-    <version>1.0.9</version>
+    <version>1.0.10</version>
     <organization>
         <name>Geosiris</name>
         <url>http://www.geosiris.com</url>
@@ -94,19 +94,31 @@
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-resqml22</artifactId>
             <version>1.0.4</version>
-            <scope>test</scope>
+<!--            <scope>test</scope>-->
         </dependency>
         <dependency>
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-resqml22-dev3</artifactId>
             <version>1.0.4</version>
-            <scope>test</scope>
+<!--            <scope>test</scope>-->
         </dependency>
         <dependency>
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-resqml201</artifactId>
             <version>1.0.4</version>
+<!--            <scope>test</scope>-->
+        </dependency>
+        <dependency>
+            <groupId>com.geosiris</groupId>
+            <artifactId>energyml-witsml21</artifactId>
+            <version>1.0.4</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jhdf</groupId>
+            <artifactId>jhdf</artifactId>
+            <version>0.6.10</version>
         </dependency>
     </dependencies>
     <build>

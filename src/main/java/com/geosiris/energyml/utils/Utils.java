@@ -28,9 +28,12 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class Utils {
 	public static Logger logger = LogManager.getLogger(Utils.class);
@@ -197,6 +200,37 @@ public class Utils {
 			logger.error(e.getMessage(), e);
 		}
 		return null;
+	}
+
+	private static String toSnakeCase(String input) {
+		return Pattern.compile("([a-z0-9])([A-Z])")
+				.matcher(input)
+				.replaceAll("$1_$2")
+				.toLowerCase();
+	}
+
+
+	public static List<Object> rawArrayToList(Object data){
+		if(data != null){
+			int length = Array.getLength(data);
+			List<Object> obj_list = new ArrayList<>();
+			for (int i = 0; i < length; i++) {
+				obj_list.add(Array.get(data, i));
+			}
+			if(obj_list.size() > 0){
+				for(int i=0; i<obj_list.size(); i++){
+					if(obj_list.get(i) != null){
+						if(obj_list.get(i).getClass().isArray()){
+							obj_list = obj_list.stream().map(Utils::rawArrayToList).collect(Collectors.toList());
+						}
+						break;
+					}
+				}
+			}
+			return obj_list;
+		}else{
+			return null;
+		}
 	}
 
 }
