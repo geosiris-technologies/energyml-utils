@@ -15,21 +15,24 @@ limitations under the License.
 */
 package com.geosiris.energyml.utils;
 
+import com.geosiris.energyml.data.AbstractMesh;
+import com.geosiris.energyml.data.Mesh;
 import com.geosiris.energyml.exception.NotImplementedException;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
 import com.geosiris.energyml.pkg.EPCFile;
+import com.geosiris.energyml.pkg.EpcHdf5FileManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.geosiris.energyml.data.SurfaceMesh.exportObj;
 import static com.geosiris.energyml.utils.ObjectController.*;
 
 
@@ -267,18 +270,17 @@ public class EnergymlWorkspaceHelper {
         return result;
     }
 
-    public static List<List<Double>> readPoint3dZValueArray(Object energymlArray, Object rootObj, String pathInRoot, EnergymlWorkspace workspace) throws NotImplementedException, InvocationTargetException, IllegalAccessException {
+    public static List<?> readPoint3dZValueArray(Object energymlArray, Object rootObj, String pathInRoot, EnergymlWorkspace workspace) throws NotImplementedException, InvocationTargetException, IllegalAccessException {
         try {
             Object supportingGeometry = ObjectController.getObjectAttributeValue(energymlArray, "SupportingGeometry");
-            Object crs = null;
+            /*Object crs = null;
             try {
                 crs = getCrsObj(energymlArray, pathInRoot, rootObj, workspace);
             } catch (ObjectNotFoundNotError e) {
                 logger.error("No CRS found, not able to check zIncreasingDownward");
             }
-            boolean zIncreasingDownward = isZReversed(crs);
-
-            List<List<Double>> supGeomArray = (List<List<Double>>) readArray(
+            boolean zIncreasingDownward = isZReversed(crs);*/
+            List<?> supGeomArray = readArray(
                     supportingGeometry,
                     rootObj,
                     pathInRoot + ".SupportingGeometry",
@@ -291,18 +293,27 @@ public class EnergymlWorkspaceHelper {
                     pathInRoot + ".ZValues",
                     workspace
             );
-//            logger.info("zvalues {}", zvaluesArrayNotFlat);
-//            zvaluesArrayNotFlat.clear();
+//            logger.info("supGeomArray : {}", (((List<?>)supGeomArray.get(0)).get(0)));
+//            logger.info("zvaluesArrayNotFlat");
 
-            List<List<Double>> res = new ArrayList<>();
             if(zvaluesArrayNotFlat.size()>0) {
-                final int colSize = zvaluesArrayNotFlat.get(0).size();
-                for (int li = 0; li < zvaluesArrayNotFlat.size(); li++) {
-                    for (int ci = 0; ci < colSize; ci++) {
-                        int idx = li * colSize + ci;
+                if(supGeomArray.get(0) instanceof Collection && !(((List<?>)supGeomArray.get(0)).get(0) instanceof Collection)){
+                    // supGeom is List<List<Double>>, a list of points
+                    final int colSize = zvaluesArrayNotFlat.get(0).size();
+                    for (int li = 0; li < zvaluesArrayNotFlat.size(); li++) {
+                        for (int ci = 0; ci < colSize; ci++) {
+                            int idx = li * colSize + ci;
 //                        if(zIncreasingDownward)
 //                            idx = li * zvaluesArrayNotFlat.size() + ci;
-                        supGeomArray.set(idx, new ArrayList<>(Arrays.asList(supGeomArray.get(idx).get(0), supGeomArray.get(idx).get(1), zvaluesArrayNotFlat.get(li).get(ci))));
+//                            List<Double> p = (List<Double>) supGeomArray.get(idx);
+                            ((List<List<Double>>)supGeomArray).get(idx).set(2, zvaluesArrayNotFlat.get(li).get(ci));
+                        }
+                    }
+                }else {
+                    for (int li = 0; li < zvaluesArrayNotFlat.size(); li++) {
+                        for (int ci = 0; ci < zvaluesArrayNotFlat.get(li).size(); ci++) {
+                            ((List<List<List<Double>>>)supGeomArray).get(li).get(ci).set(2,zvaluesArrayNotFlat.get(li).get(ci));
+                        }
                     }
                 }
             }
@@ -313,7 +324,7 @@ public class EnergymlWorkspaceHelper {
         return null;
     }
 
-    public static List<List<Double>> readPoint3dFromRepresentationLatticeArray(
+    public static List<?> readPoint3dFromRepresentationLatticeArray(
             Object energymlArray,
             Object rootObj,
             String pathInRoot,
@@ -337,7 +348,7 @@ public class EnergymlWorkspaceHelper {
         return null;
     }
 
-    public static List<List<Double>> readGrid2dPatch(
+    public static List<?> readGrid2dPatch(
             Object patch,
             Object grid2d,
             String pathInRoot,
@@ -347,16 +358,16 @@ public class EnergymlWorkspaceHelper {
         String pointsPath = pointsPathAndPointsObj.keySet().stream().findFirst().get();
         Object pointsObj = pointsPathAndPointsObj.get(pointsPath);
 
-        return (List<List<Double>>) readArray(pointsObj, grid2d, pathInRoot + pointsPath, workspace);
+        return readArray(pointsObj, grid2d, pathInRoot + pointsPath, workspace);
     }
 
-    public static List<List<Double>> readPoint3dLatticeArray(
+    public static List<List<List<Double>>> readPoint3dLatticeArray(
             Object energymlArray,
             Object rootObj,
             String pathInRoot,
             EnergymlWorkspace workspace
     ) throws NotImplementedException, InvocationTargetException, IllegalAccessException {
-        List<List<Double>> result = new ArrayList<>();
+        List<List<List<Double>>> result = new ArrayList<>();
         try {
             List<Double> origin = pointAsArray(ObjectController.getObjectAttributeValue(energymlArray, "origin"));
             List<Object> offset = (List<Object>) ObjectController.getObjectAttributeValue(energymlArray, "offset");
@@ -431,19 +442,19 @@ public class EnergymlWorkspaceHelper {
                     fastestSize = fastestTable.size();
                     slowestSize = slowestTable.size();*/
                 }
-                for (int i = 0; i < slowestSize; i++) {
-                    for (int j = 0; j < fastestSize; j++) {
+                for (int i = 0; i < Math.min(slowestSize, slowestTable.size() + 1); i++) {
+                    List<List<Double>> fastList = new ArrayList<>();
+                    for (int j = 0; j < Math.min(fastestSize, fastestTable.size() + 1); j++) {
                         List<Double> previousValue = origin;
                         if (j > 0) {
                             if (i > 0) { // (i,j) on prends (i-1, j-1) comme previous
-                                previousValue = result.get((i - 1) * fastestSize + j - 1);
+                                previousValue = result.get(i - 1).get(j - 1);
                             } else { // (0, j)
-                                previousValue = result.get(j - 1);
+                                previousValue = fastList.get(j - 1);
                             }
                         } else {
                             if (i > 0) {
-                                int prevLineIdx = (i - 1) * fastestSize;
-                                previousValue = result.get(prevLineIdx);
+                                previousValue = result.get(i - 1).get(0);
                             }
                             // if (0,0) previous is origin
                         }
@@ -454,8 +465,9 @@ public class EnergymlWorkspaceHelper {
                         if (i > 0) {
                             current = sumLists(current, slowestTable.get(i - 1));
                         }
-                        result.add(current);
+                        fastList.add(current);
                     }
+                    result.add(fastList);
                 }
             } else {
                 throw new RuntimeException(energymlArray.getClass() + " read with an offset of length " + offset.size() + " is not supported");
@@ -489,5 +501,42 @@ public class EnergymlWorkspaceHelper {
                 obj,
                 "(PathInHdfFile|PathInExternalFile)"
         ).entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> (String) e.getValue()));
+    }
+
+    public static void mainGrid(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
+        EpcHdf5FileManager m201 = EpcHdf5FileManager.readEpc("D:/UniversitePoitiers/git/gitlab-xlim/demos/geosimplification/rc/resqml/2.0.1/Volve_Horizons_and_Faults_Depth_originEQN_Plus.epc");
+        String uuid = "3a45fb70-8ba9-4341-a701-0f514270ba9c";
+        List<AbstractMesh> meshesGrid = Mesh.readMeshObject(m201.getObjectByUUID(uuid), m201);
+
+        exportObj(meshesGrid, new FileOutputStream("D:/__coucouGrid_"+uuid+".obj"), "test");
+    }
+
+    public static void mainGridTestingPkg(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
+        EpcHdf5FileManager m201 = EpcHdf5FileManager.readEpc("D:/Geosiris/OSDU/manifestTranslation/commons/data/testingPackageCpp.epc");
+
+        String gridUuid = "aa5b90f1-2eab-4fa6-8720-69dd4fd51a4d";
+        List<AbstractMesh> meshesGrid = Mesh.readMeshObject(m201.getObjectByUUID(gridUuid), m201);
+        String trUuid = "0c49b40a-632a-457a-b519-a178f40a397d";
+        List<AbstractMesh> meshesTr = Mesh.readMeshObject(m201.getObjectByUUID(trUuid), m201);
+
+        exportObj(meshesGrid, new FileOutputStream("D:/__coucouGrid_testing_pkg_"+gridUuid+".obj"), "test");
+        exportObj(meshesTr, new FileOutputStream("D:/__coucouGrid_testing_pkg_"+trUuid+".obj"), "test");
+    }
+    public static void mainTrSet(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
+        EpcHdf5FileManager m201 = EpcHdf5FileManager.readEpc("D:/UniversitePoitiers/git/gitlab-xlim/demos/geosimplification/rc/resqml/2.0.1/Volve_Horizons_and_Faults_Depth_originEQN_Plus.epc");
+        String uuid = "f814c230-bf43-4f2a-89d6-6229eb3c9c49";
+        List<AbstractMesh> meshes = Mesh.readMeshObject(m201.getObjectByUUID(uuid), m201);
+//        logger.info(getHdf5PathFromExternalPath(m201.getObjectByUUID(uuid), null, null, m201.epcFile));
+
+//        for(var m: meshes){
+//            logger.info("{} : {} {} ", m.getIdentifier(), m.getNbEdge(), m.getNbFaces());
+//        }
+        exportObj(meshes, new FileOutputStream("D:/coucou_tr_"+uuid+".obj"), "test");
+    }
+
+    public static void main(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
+//        mainGrid(argv);
+//        mainTrSet(argv);
+        mainGridTestingPkg(argv);
     }
 }

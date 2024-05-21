@@ -69,15 +69,19 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
     public static List<?> getDatasetValues(String filePath, String pathInHdf5){
         logger.debug("{}, {}", filePath, pathInHdf5);
         try (HdfFile hdfFile = new HdfFile(Paths.get(filePath))) {
-            Dataset dataset = hdfFile.getDatasetByPath(pathInHdf5);
-            // data will be a Java array with the dimensions of the HDF5 dataset
-            Object data = dataset.getData();
-            logger.debug("@getDatasetValues {} {} {}", data.getClass().getSimpleName(), data.getClass().isArray(), dataset.getDimensions());
-            return rawArrayToList(data);
+            return getDatasetValues(hdfFile, pathInHdf5);
         }catch (Exception e){
             e.printStackTrace();
             throw e;
         }
+    }
+
+    public static List<?> getDatasetValues(HdfFile hdfFile, String pathInHdf5){
+        Dataset dataset = hdfFile.getDatasetByPath(pathInHdf5);
+        // data will be a Java array with the dimensions of the HDF5 dataset
+        Object data = dataset.getData();
+        logger.debug("@getDatasetValues {} {} {}", data.getClass().getSimpleName(), data.getClass().isArray(), dataset.getDimensions());
+        return rawArrayToList(data);
     }
 
 
@@ -93,19 +97,20 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
         return (String) ObjectController.getObjectAttributeValue(epr, "Filename");
     }
 
+    /**
+     Maybe the path in the epc file objet was given as an absolute one : 'C:/my_file.h5'
+     but if the epc has been moved (e.g. in 'D:/a_folder/') it will not work. Thus, the function
+     energyml.utils.data.hdf.get_hdf5_path_from_external_path return the value from epc objet concatenate to the
+     real epc folder path.
+     With our example we will have : 'D:/a_folder/C:/my_file.h5'
+     this function returns (following our example):
+     [ 'C:/my_file.h5', 'D:/a_folder/my_file.h5', 'my_file.h5']
+     @param valueInXml
+     @param epc
+     @return:
+     **/
     public static List<String> getH5PathPossibilities(String valueInXml, EPCFile epc) {
-        /**
-         Maybe the path in the epc file objet was given as an absolute one : 'C:/my_file.h5'
-         but if the epc has been moved (e.g. in 'D:/a_folder/') it will not work. Thus, the function
-         energyml.utils.data.hdf.get_hdf5_path_from_external_path return the value from epc objet concatenate to the
-         real epc folder path.
-         With our example we will have : 'D:/a_folder/C:/my_file.h5'
-         this function returns (following our example):
-         [ 'C:/my_file.h5', 'D:/a_folder/my_file.h5', 'my_file.h5']
-         :param valueInXml:
-         :param epc:
-         :return:
-         **/
+
         String epcFolder = epc.getEpcFileFolder();
         String hdf5PathRematch = (epcFolder!=null && epcFolder.length() > 0 ?
                 epcFolder + '/' :
@@ -174,36 +179,6 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
 
         return null;
     }
-    /*public String getExternalFilePath(String pathInHDF, Object energymlObject){
-        // Resqml 2.2
-        List<Object> externalDatasetParts = ObjectController.findSubObjects(energymlObject, "ExternalDatasetPart", true);
-        //System.out.println("externalDatasetParts " + externalDatasetParts.size() + " " + energymlObject);
-        for(Object edp: externalDatasetParts){
-            String otherPath = (String) ObjectController.getObjectAttributeValue(edp, "PathInExternalFile");
-            System.out.println("otherPath " + otherPath);
-            if(otherPath != null && pathInHDF.compareTo(otherPath) == 0){
-                Object epr_ref = ObjectController.getObjectAttributeValue(edp, "EpcExternalPartReference");
-                if(epr_ref != null){
-                    Object epr = getObjectByIdentifier(EPCFile.getIdentifier(epr_ref));
-                    return getExternalFilePathFromExternalPartRef(epr);
-                }
-            }
-        }
-
-        // Resqml 2.0.1
-        List<Object> hdf5Dataset = ObjectController.findSubObjects(energymlObject, "Hdf5Dataset", false);
-        for(Object edp: hdf5Dataset){
-            String otherPath = (String) ObjectController.getObjectAttributeValue(edp, "PathInHdfFile");
-            if(otherPath != null && pathInHDF.compareTo(otherPath) == 0){
-                Object epr_ref = ObjectController.getObjectAttributeValue(edp, "HdfProxy");
-                if(epr_ref != null){
-                    Object epr = getObjectByIdentifier(EPCFile.getIdentifier(epr_ref));
-                    return getExternalFilePathFromExternalPartRef(epr);
-                }
-            }
-        }
-        return null;
-    }*/
 
     public EPCFile getEpcFile() {
         return epcFile;

@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.geosiris.energyml.utils.EnergymlWorkspaceHelper.*;
-import static com.geosiris.energyml.utils.ObjectController.searchAttributeMatchingName;
 import static com.geosiris.energyml.utils.ObjectController.searchAttributeMatchingNameWithPath;
 
 public class Mesh {
@@ -208,94 +207,107 @@ public class Mesh {
                 String patchPath = e.getKey();
                 Object patch = e.getValue();
 
-                var reverseZValues = false;
+                boolean reverseZValues = false;
                 try {
                     crs = getCrsObj(patch, patchPath, energymlObject, workspace);
                     reverseZValues = isZReversed(crs);
                 } catch (ObjectNotFoundNotError ignore) {
                 }
 
-                List<List<Double>> points = readGrid2dPatch(patch, energymlObject, patchPath, workspace);
-//                logger.info("points : {}", points);
-                var faCount = Long.valueOf(String.valueOf(searchAttributeMatchingName(patch, "FastestAxisCount").get(0)));
-                var saCount = Long.valueOf(String.valueOf(searchAttributeMatchingName(patch, "SlowestAxisCount").get(0)));
+                List<List<List<Double>>> points = (List<List<List<Double>>>) readGrid2dPatch(patch, energymlObject, patchPath, workspace);
+
+                boolean finalReverseZValues = reverseZValues;
+                points.forEach(l -> l.forEach(p -> {
+                        if(Double.isNaN(p.get(2))) {
+                            if (keepHoles)
+                                p.set(2, 0.);
+                        }else if(finalReverseZValues){
+                            p.set(2, -p.get(2));
+                        }
+                    }));
 
                 List<List<Double>> pointsNoNaN = new ArrayList<>();
                 var indiceToFinalIndice = new HashMap<Long, Long>();
-                if (keepHoles) {
-                    for (var i = 0; i < points.size(); i++) {
-                        var p = points.get(i);
-                        if (Double.isNaN(p.get(2))) {
-                            points.get(i).set(2, 0.);
-//                            points.set(i, List.of(p.get(0), p.get(1), 0.));
-                        } else if (reverseZValues) {
-                            points.get(i).set(2, -(Double) p.get(2));
-//                            points.set(i, List.of(p.get(0), p.get(1), -(Double) p.get(2)));
-                        }
-                    }
-                } else {
-                    for (var i = 0; i < points.size(); i++) {
-                        List<Double> p = points.get(i);
-                        if (p.size() > 2 && !Double.isNaN(p.get(2))) {
-                            if (reverseZValues) {
-                                points.get(i).set(2, -(Double) p.get(2));
-//                                points.set(i, List.of(p.get(0), p.get(1), -(Double) p.get(2)));
-                            }
-                            indiceToFinalIndice.put((long) i, (long) pointsNoNaN.size());
-                            pointsNoNaN.add(p);
-                        }
-                    }
-                }
 
                 List<List<Long>> indices = new ArrayList<>();
-                while (saCount * faCount > points.size()) {
-                    saCount--;
-                    faCount--;
-                }
-
-                while (saCount * faCount < points.size()) {
-                    saCount++;
-                    faCount++;
-                }
-
-                for (int sa = 0; sa < saCount - 1; sa++) {
-                    for (int fa = 0; fa < faCount - 1; fa++) {
-                        var line = sa * faCount;
-                        if (keepHoles) {
-                            indices.add(new ArrayList<>(Arrays.asList(
-                                    line + fa,
-                                    line + fa + 1,
-                                    line + faCount + fa + 1,
-                                    line + faCount + fa
-                            )
-                            ));
-                        } else if (
-                                indiceToFinalIndice.containsKey(line + fa)
-                                        && indiceToFinalIndice.containsKey(line + fa + 1)
-                                        && indiceToFinalIndice.containsKey(line + faCount + fa + 1)
-                                        && indiceToFinalIndice.containsKey(line + faCount + fa)
-                        ) {
-                            indices.add(new ArrayList<>(Arrays.asList(
-                                    indiceToFinalIndice.get(line + fa),
-                                    indiceToFinalIndice.get(line + fa + 1),
-                                    indiceToFinalIndice.get(line + faCount + fa + 1),
-                                    indiceToFinalIndice.get(line + faCount + fa)
-                            )));
+                if (!keepHoles) {
+                    for (var i = 0; i < points.size(); i++) {
+                        long lineSize = points.get((int) i).size();
+                        for (var j = 0; j < lineSize; j++) {
+                            List<Double> p = points.get(i).get(j);
+                            if(!Double.isNaN(p.get(2))) {
+                                indiceToFinalIndice.put((long) i * lineSize + j, (long) pointsNoNaN.size());
+                                pointsNoNaN.add(p);
+                            }
                         }
                     }
                 }
-//                logger.info("points : {}", points);
 
-//                logger.info("{} saCount: {} faCount: {}", indices, saCount, faCount);
-//                logger.info("saCount: {} faCount: {}", saCount, faCount);
-//                logger.info("indiceToFinalIndice : {} ", indiceToFinalIndice);
+                for (long i = 0; i < points.size() - 1; i++) {
+                    long lineSize = points.get((int) i).size();
+                    for (long j = 0; j < lineSize - 1; j++) {
+                        List<Long> faceIdx = new ArrayList<>(List.of(
+                                i * lineSize + j,
+                                (i+1) * lineSize + j,
+                                (i+1) * lineSize + j + 1,
+                                i * lineSize + j + 1
+                        ));
+                        if(!keepHoles){
+                            faceIdx = faceIdx.stream().map(_x -> indiceToFinalIndice.get(_x)).collect(Collectors.toList());
+                        }
+                        if(!faceIdx.contains(null))
+                            indices.add(faceIdx);
+                    }
+                }
 
                 meshes.add(new SurfaceMesh(
                         energymlObject,
                         crs,
-                        keepHoles ? points : pointsNoNaN,
+                        keepHoles ? points.stream().flatMap(List::stream).collect(Collectors.toList()) : pointsNoNaN,
                         String.format("%s_patch%d", EPCFile.getIdentifier(energymlObject), patchIdx),
                         indices
+                ));
+
+                patchIdx++;
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return meshes;
+    }
+
+    public static List<GridedPointSetMesh> readGrid2dRepresentationPoints(Object energymlObject, EnergymlWorkspace workspace){
+        List<GridedPointSetMesh> meshes = new ArrayList<>();
+        try {
+            Object crs = null;
+
+            long patchIdx = 0;
+            var patchPathInObjMap = searchAttributeMatchingNameWithPath(energymlObject, "Grid2dPatch");
+            for (Map.Entry<String, Object> e : patchPathInObjMap.entrySet()) {
+                String patchPath = e.getKey();
+                Object patch = e.getValue();
+
+                boolean reverseZValues = false;
+                try {
+                    crs = getCrsObj(patch, patchPath, energymlObject, workspace);
+                    reverseZValues = isZReversed(crs);
+                } catch (ObjectNotFoundNotError ignore) {
+                }
+
+                List<List<List<Double>>> points = (List<List<List<Double>>>) readGrid2dPatch(patch, energymlObject, patchPath, workspace);
+
+                boolean finalReverseZValues = reverseZValues;
+                points.forEach(l -> l.forEach(p -> {
+                        if(!Double.isNaN(p.get(2)) && finalReverseZValues){
+                            p.set(2, -p.get(2));
+                        }
+                    }));
+
+                meshes.add(new GridedPointSetMesh(
+                        energymlObject,
+                        crs,
+                        points,
+                        String.format("%s_patch%d", EPCFile.getIdentifier(energymlObject), patchIdx)
                 ));
 
                 patchIdx++;
@@ -320,18 +332,18 @@ public class Mesh {
             for (Map.Entry<String, Object> e : patchPathInObjMap.entrySet().stream().sorted(
                     (ea, eb) -> {
 
-                    String indexa = String.valueOf(ObjectController.getObjectAttributeValue(ea.getValue(), "PatchIndex"));
-                    String indexb = String.valueOf(ObjectController.getObjectAttributeValue(eb.getValue(), "PatchIndex"));
-                    if(indexa==null){
+                        String indexa = String.valueOf(ObjectController.getObjectAttributeValue(ea.getValue(), "PatchIndex"));
+                        String indexb = String.valueOf(ObjectController.getObjectAttributeValue(eb.getValue(), "PatchIndex"));
+                        if(indexa==null){
+                            return -1;
+                        } else if (indexb==null) {
+                            return 1;
+                        }else{
+                            try{
+                                return Integer.compare(Integer.parseInt(indexa), Integer.parseInt(indexb));
+                            }catch (Exception ignore){}
+                        }
                         return -1;
-                    } else if (indexb==null) {
-                        return 1;
-                    }else{
-                        try{
-                            return Integer.compare(Integer.parseInt(indexa), Integer.parseInt(indexb));
-                        }catch (Exception ignore){}
-                    }
-                    return -1;
                     }
             ).collect(Collectors.toList())) {
                 String patchPath = e.getKey();

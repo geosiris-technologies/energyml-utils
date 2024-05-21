@@ -20,8 +20,8 @@ import java.util.List;
 public abstract class AbstractMesh implements MeshExporter{
     protected Object energymlObject;
     protected Object crsObject;
-    protected List<List<Double>> point_list;
     protected String identifier;
+    protected List<?> point_list;
 
     public abstract Long getNbPoints();
     public abstract Long getNbEdge();
@@ -30,6 +30,5 @@ public abstract class AbstractMesh implements MeshExporter{
     public String getIdentifier() {
         return identifier;
     }
-
     public abstract List<List<Long>> getEdgeIndices();
 }

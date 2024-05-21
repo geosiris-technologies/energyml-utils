@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class SurfaceMesh extends AbstractMesh{
-
     private List<List<Long>> faces_indices;
 
     public SurfaceMesh(Object energymlObject, Object crsObject, List<List<Double>> point_list, String identifier, List<List<Long>> faces_indices) {
@@ -172,7 +171,7 @@ public class SurfaceMesh extends AbstractMesh{
             exportObjElt(
                     out,
                     out,
-                    m.point_list,
+                    (List<List<Double>>) m.point_list,
                     m.getEdgeIndices(),
                     pointOffset,
                     new ArrayList<>(),
