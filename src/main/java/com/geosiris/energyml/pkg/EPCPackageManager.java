@@ -183,7 +183,7 @@ public class EPCPackageManager {
             return new Pair<>(doc.getFirstChild().getNamespaceURI(), EPCGenericManager.reformatSchemaVersion(version));
         } catch (Exception e) {
             logger.error(e);
-            e.printStackTrace();
+            logger.error(e);
         }
         return null;
     }

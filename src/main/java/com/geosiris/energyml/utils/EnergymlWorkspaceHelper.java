@@ -203,7 +203,7 @@ public class EnergymlWorkspaceHelper {
         try {
             return EnergymlWorkspaceHelper.class.getMethod("read" + arrayTypeName, Object.class, Object.class, String.class, EnergymlWorkspace.class);
         } catch (NoSuchMethodException e) {
-            e.printStackTrace();
+            logger.error(e);
             return null;
         }
     }
@@ -325,7 +325,7 @@ public class EnergymlWorkspaceHelper {
             }
             return supGeomArray;
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e);
         }
         return null;
     }
@@ -349,7 +349,7 @@ public class EnergymlWorkspaceHelper {
                 throw new RuntimeException("Not supported type " + energymlArray.getClass() + " for object " + rootObj.getClass());
             }
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e);
         }
         return null;
     }
@@ -479,7 +479,7 @@ public class EnergymlWorkspaceHelper {
                 throw new RuntimeException(energymlArray.getClass() + " read with an offset of length " + offset.size() + " is not supported");
             }
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e);
         }
 
         return result;

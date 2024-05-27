@@ -185,7 +185,7 @@ public class Mesh {
                 patchIdx++;
             }
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e);
             throw e;
         }
         return meshes;
@@ -271,7 +271,7 @@ public class Mesh {
                 patchIdx++;
             }
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e);
         }
         return meshes;
     }
@@ -313,7 +313,7 @@ public class Mesh {
                 patchIdx++;
             }
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e);
         }
         return meshes;
     }
@@ -412,7 +412,7 @@ public class Mesh {
                 patchIdx++;
             }
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error(e);
         }
 
         return meshes;

@@ -267,7 +267,7 @@ public class EPCFile implements EnergymlWorkspace{
             if (sourceRels.containsKey(o)){
                 for(Object source: new HashSet<>(sourceRels.get(o))){
                     String s_uuid = getUuid(source);
-                    String s_objVersion = (String) ObjectController.getObjectAttributeValue(source, "ObjectVersion");
+                    String s_objVersion = getObjectVersion(source);
                     Relationship rel = new Relationship();
                     rel.setType(EPCRelsRelationshipType.SourceObject.getType());
                     rel.setId(URLEncoder.encode(s_uuid + (s_objVersion!= null ? "_" + s_objVersion : ""), Charset.defaultCharset()));
@@ -283,7 +283,7 @@ public class EPCFile implements EnergymlWorkspace{
             if (destRels.containsKey(o)){
                 for(Object dest: new HashSet<>(destRels.get(o))){
                     String s_uuid = getUuid(dest);
-                    String s_objVersion = (String) ObjectController.getObjectAttributeValue(dest, "ObjectVersion");
+                    String s_objVersion = getObjectVersion(dest);
                     Relationship rel = new Relationship();
                     rel.setType(EPCRelsRelationshipType.DestinationObject.getType());
                     rel.setId(URLEncoder.encode(s_uuid + (s_objVersion!= null ? "_" + s_objVersion : ""), Charset.defaultCharset()));
@@ -348,7 +348,7 @@ public class EPCFile implements EnergymlWorkspace{
                             if(entry.getName().toLowerCase().startsWith("namespace_")){
                                 foundNamespaceFolder = true;
                             }
-                        }catch (Exception e){logger.error("Error for {}: {}", entry.getName(), e);e.printStackTrace();};
+                        }catch (Exception e){logger.error("Error for {}: {}", entry.getName(), e);logger.error(e);};
                     }else if (entry.getName().endsWith("." + OPCRelsPackage.getRelsExtension())){
                         Relationships rels = (Relationships) OPCRelsPackage.unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
                         String objPath = entry.getName()
@@ -369,7 +369,7 @@ public class EPCFile implements EnergymlWorkspace{
                 String targId = getIdentifier(target);
 
                 Pair<String, String> obj_pair = new Pair<>((String) ObjectController.getObjectAttributeValue(target, "uuid"),
-                        (String) ObjectController.getObjectAttributeValue(target, "ObjectVersion"));
+                        getObjectVersion(target));
 //                if(!epc.readRels.containsKey(obj_pair)){
 //                    epc.readRels.put(obj_pair, new ArrayList<>());
 //                }
