@@ -15,6 +15,8 @@ limitations under the License.
 */
 package com.geosiris.energyml.pkg;
 
+import com.geosiris.energyml.data.AbstractMesh;
+import com.geosiris.energyml.data.Mesh;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
 import com.geosiris.energyml.utils.EnergymlWorkspace;
 import com.geosiris.energyml.utils.ObjectController;
@@ -25,12 +27,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.geosiris.energyml.data.SurfaceMesh.exportObj;
 import static com.geosiris.energyml.utils.EnergymlWorkspaceHelper.getHdfReference;
 import static com.geosiris.energyml.utils.ObjectController.searchAttributeMatchingName;
 import static com.geosiris.energyml.utils.Utils.rawArrayToList;
@@ -227,5 +233,4 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
             throw new ObjectNotFoundNotError(String.format("Failed to read h5 file. Paths tried : %s : %s", h5filePaths, pathInExternal));
         return resultArray;
     }
-
 }

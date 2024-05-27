@@ -94,19 +94,19 @@
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-resqml22</artifactId>
             <version>1.0.4</version>
-<!--            <scope>test</scope>-->
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-resqml22-dev3</artifactId>
             <version>1.0.4</version>
-<!--            <scope>test</scope>-->
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.geosiris</groupId>
             <artifactId>energyml-resqml201</artifactId>
             <version>1.0.4</version>
-<!--            <scope>test</scope>-->
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.geosiris</groupId>

@@ -15,24 +15,18 @@ limitations under the License.
 */
 package com.geosiris.energyml.utils;
 
-import com.geosiris.energyml.data.AbstractMesh;
-import com.geosiris.energyml.data.Mesh;
 import com.geosiris.energyml.exception.NotImplementedException;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
 import com.geosiris.energyml.pkg.EPCFile;
-import com.geosiris.energyml.pkg.EpcHdf5FileManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.geosiris.energyml.data.SurfaceMesh.exportObj;
 import static com.geosiris.energyml.utils.ObjectController.*;
 
 
@@ -287,32 +281,44 @@ public class EnergymlWorkspaceHelper {
                     workspace
             );
             Object zvalues = ObjectController.getObjectAttributeValue(energymlArray, "ZValues");
-            List<List<Double>> zvaluesArrayNotFlat = (List<List<Double>>) readArray(
+            List<?> zvaluesArray = readArray(
                     zvalues,
                     rootObj,
                     pathInRoot + ".ZValues",
                     workspace
             );
+
+            List<Double> zvalueFlat = null;
+            if(zvaluesArray.get(0) instanceof Collection){
+                zvalueFlat = ((List<List<?>>)zvaluesArray).stream().flatMap(List::stream).map(z-> z instanceof String ? Double.parseDouble((String) z) : ((Number)z).doubleValue()).collect(Collectors.toList());
+            }else{
+                zvalueFlat = zvaluesArray.stream().map(z-> z instanceof String ? Double.parseDouble((String) z) : ((Number)z).doubleValue()).collect(Collectors.toList());
+            }
 //            logger.info("supGeomArray : {}", (((List<?>)supGeomArray.get(0)).get(0)));
 //            logger.info("zvaluesArrayNotFlat");
 
-            if(zvaluesArrayNotFlat.size()>0) {
+            if(!zvaluesArray.isEmpty()) {
                 if(supGeomArray.get(0) instanceof Collection && !(((List<?>)supGeomArray.get(0)).get(0) instanceof Collection)){
                     // supGeom is List<List<Double>>, a list of points
-                    final int colSize = zvaluesArrayNotFlat.get(0).size();
-                    for (int li = 0; li < zvaluesArrayNotFlat.size(); li++) {
-                        for (int ci = 0; ci < colSize; ci++) {
-                            int idx = li * colSize + ci;
-//                        if(zIncreasingDownward)
-//                            idx = li * zvaluesArrayNotFlat.size() + ci;
-//                            List<Double> p = (List<Double>) supGeomArray.get(idx);
-                            ((List<List<Double>>)supGeomArray).get(idx).set(2, zvaluesArrayNotFlat.get(li).get(ci));
-                        }
+//                    final int colSize = ((List<List<?>>)supGeomArray).get(0).size();
+//                    for (int li = 0; li < supGeomArray.size(); li++) {
+//                        for (int ci = 0; ci < colSize; ci++) {
+//                            int idx = li * colSize + ci;
+////                        if(zIncreasingDownward)
+////                            idx = li * zvaluesArrayNotFlat.size() + ci;
+////                            List<Double> p = (List<Double>) supGeomArray.get(idx);
+//                            ((List<List<Double>>)supGeomArray).get(idx).set(2, zvaluesArrayNotFlat.get(li).get(ci));
+//                        }
+//                    }
+                    for(int pi=0; pi<supGeomArray.size(); pi++){
+                        ((List<List<Double>>)supGeomArray).get(pi).set(2, zvalueFlat.get(pi));
                     }
                 }else {
-                    for (int li = 0; li < zvaluesArrayNotFlat.size(); li++) {
-                        for (int ci = 0; ci < zvaluesArrayNotFlat.get(li).size(); ci++) {
-                            ((List<List<List<Double>>>)supGeomArray).get(li).get(ci).set(2,zvaluesArrayNotFlat.get(li).get(ci));
+                    final int colSize = ((List<List<?>>)supGeomArray).get(0).size();
+                    for (int li = 0; li < supGeomArray.size(); li++) {
+                        for (int ci = 0; ci < colSize; ci++) {
+                            int idx = li * colSize + ci;
+                            ((List<List<List<Double>>>)supGeomArray).get(li).get(ci).set(2, zvalueFlat.get(idx));
                         }
                     }
                 }
@@ -501,42 +507,5 @@ public class EnergymlWorkspaceHelper {
                 obj,
                 "(PathInHdfFile|PathInExternalFile)"
         ).entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> (String) e.getValue()));
-    }
-
-    public static void mainGrid(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
-        EpcHdf5FileManager m201 = EpcHdf5FileManager.readEpc("D:/UniversitePoitiers/git/gitlab-xlim/demos/geosimplification/rc/resqml/2.0.1/Volve_Horizons_and_Faults_Depth_originEQN_Plus.epc");
-        String uuid = "3a45fb70-8ba9-4341-a701-0f514270ba9c";
-        List<AbstractMesh> meshesGrid = Mesh.readMeshObject(m201.getObjectByUUID(uuid), m201);
-
-        exportObj(meshesGrid, new FileOutputStream("D:/__coucouGrid_"+uuid+".obj"), "test");
-    }
-
-    public static void mainGridTestingPkg(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
-        EpcHdf5FileManager m201 = EpcHdf5FileManager.readEpc("D:/Geosiris/OSDU/manifestTranslation/commons/data/testingPackageCpp.epc");
-
-        String gridUuid = "aa5b90f1-2eab-4fa6-8720-69dd4fd51a4d";
-        List<AbstractMesh> meshesGrid = Mesh.readMeshObject(m201.getObjectByUUID(gridUuid), m201);
-        String trUuid = "0c49b40a-632a-457a-b519-a178f40a397d";
-        List<AbstractMesh> meshesTr = Mesh.readMeshObject(m201.getObjectByUUID(trUuid), m201);
-
-        exportObj(meshesGrid, new FileOutputStream("D:/__coucouGrid_testing_pkg_"+gridUuid+".obj"), "test");
-        exportObj(meshesTr, new FileOutputStream("D:/__coucouGrid_testing_pkg_"+trUuid+".obj"), "test");
-    }
-    public static void mainTrSet(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
-        EpcHdf5FileManager m201 = EpcHdf5FileManager.readEpc("D:/UniversitePoitiers/git/gitlab-xlim/demos/geosimplification/rc/resqml/2.0.1/Volve_Horizons_and_Faults_Depth_originEQN_Plus.epc");
-        String uuid = "f814c230-bf43-4f2a-89d6-6229eb3c9c49";
-        List<AbstractMesh> meshes = Mesh.readMeshObject(m201.getObjectByUUID(uuid), m201);
-//        logger.info(getHdf5PathFromExternalPath(m201.getObjectByUUID(uuid), null, null, m201.epcFile));
-
-//        for(var m: meshes){
-//            logger.info("{} : {} {} ", m.getIdentifier(), m.getNbEdge(), m.getNbFaces());
-//        }
-        exportObj(meshes, new FileOutputStream("D:/coucou_tr_"+uuid+".obj"), "test");
-    }
-
-    public static void main(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
-//        mainGrid(argv);
-//        mainTrSet(argv);
-        mainGridTestingPkg(argv);
     }
 }

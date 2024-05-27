@@ -25,13 +25,13 @@ public class GridedPointSetMesh extends AbstractMesh{
     public GridedPointSetMesh(Object energymlObject, Object crsObject, List<List<List<Double>>> point_list, String identifier) {
         this.energymlObject = energymlObject;
         this.crsObject = crsObject;
-        this.point_list = point_list;
+        this.pointList = point_list;
         this.identifier = identifier;
     }
 
     @Override
     public Long getNbPoints() {
-        return this.point_list != null ? this.point_list.size() : 0L;
+        return this.pointList != null ? this.pointList.size() : 0L;
     }
 
     @Override

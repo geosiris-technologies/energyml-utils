@@ -25,27 +25,27 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class SurfaceMesh extends AbstractMesh{
-    private List<List<Long>> faces_indices;
+    private List<List<Long>> facesIndices;
 
     public SurfaceMesh(Object energymlObject, Object crsObject, List<List<Double>> point_list, String identifier, List<List<Long>> faces_indices) {
         this.energymlObject = energymlObject;
         this.crsObject = crsObject;
-        this.point_list = point_list;
+        this.pointList = point_list;
         this.identifier = identifier;
-        this.faces_indices = faces_indices;
+        this.facesIndices = faces_indices;
     }
 
     @Override
     public Long getNbPoints() {
-        return this.point_list != null ? this.point_list.size() : 0L;
+        return this.pointList != null ? this.pointList.size() : 0L;
     }
 
     @Override
     public Long getNbEdge() {
-        if(faces_indices == null || faces_indices.size() == 0){
+        if(facesIndices == null || facesIndices.size() == 0){
             return 0L;
         }else {
-            return faces_indices.stream()
+            return facesIndices.stream()
                     .map(l -> ((long) l.size()) - 1L)
                     .reduce(Long::sum).get();
         }
@@ -53,12 +53,12 @@ public class SurfaceMesh extends AbstractMesh{
 
     @Override
     public Long getNbFaces() {
-        return (long) faces_indices.size();
+        return (long) facesIndices.size();
     }
 
     @Override
     public List<List<Long>> getEdgeIndices() {
-        return faces_indices;
+        return facesIndices;
     }
 
     @Override
@@ -171,13 +171,13 @@ public class SurfaceMesh extends AbstractMesh{
             exportObjElt(
                     out,
                     out,
-                    (List<List<Double>>) m.point_list,
+                    (List<List<Double>>) m.pointList,
                     m.getEdgeIndices(),
                     pointOffset,
                     new ArrayList<>(),
                     m instanceof PolylineSetMesh ? "l" : "f"
             );
-            pointOffset += m.point_list.size();
+            pointOffset += m.pointList.size();
             out.write("\n".getBytes(StandardCharsets.UTF_8));
         }
     }

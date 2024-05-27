@@ -324,14 +324,12 @@ public class Mesh {
         try {
             Object crs = null;
 
-
             long pointOffset = 0;
             long patchIdx = 0;
             var patchPathInObjMap = searchAttributeMatchingNameWithPath(energymlObject, "TrianglePatch.\\d+", false);
 
             for (Map.Entry<String, Object> e : patchPathInObjMap.entrySet().stream().sorted(
                     (ea, eb) -> {
-
                         String indexa = String.valueOf(ObjectController.getObjectAttributeValue(ea.getValue(), "PatchIndex"));
                         String indexb = String.valueOf(ObjectController.getObjectAttributeValue(eb.getValue(), "PatchIndex"));
                         if(indexa==null){
@@ -355,7 +353,23 @@ public class Mesh {
 
                 List<List<Double>> pointList = new ArrayList<>();
                 for (var pointPath : searchAttributeMatchingNameWithPath(patch, "Geometry.Points").entrySet()) {
-                    pointList.addAll((List<List<Double>>) readArray(pointPath.getValue(), energymlObject, patchPath + pointPath.getKey(), workspace));
+                    List<?> pl = readArray(pointPath.getValue(), energymlObject, patchPath + pointPath.getKey(), workspace);
+                    if(pl.size() > 0) {
+                        if (pl.get(0) instanceof Collection) {
+                            pointList.addAll(((List<List<?>>) pl).stream()
+                                    .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
+                        } else { // pl given flat
+                            for (int i = 0; i < pl.size() - 2; i++) {
+                                pointList.add(new ArrayList<>(List.of(
+                                        ((Number) pl.get(i)).doubleValue(),
+                                        ((Number) pl.get(i + 1)).doubleValue(),
+                                        ((Number) pl.get(i + 2)).doubleValue()
+                                )));
+                            }
+                        }
+                    }else{
+                        logger.info("Size is 0 for {}", patch);
+                    }
                 }
                 if(isZReversed(crs)){
                     pointList.forEach(l->l.set(2, -l.get(2)));
@@ -363,15 +377,26 @@ public class Mesh {
 
                 List<List<Long>> trianglesList_obj = new ArrayList<>();
                 for (var trianglesPath : searchAttributeMatchingNameWithPath(patch, "Triangles").entrySet()) {
-                    trianglesList_obj.addAll(((List<List<?>>) readArray(trianglesPath.getValue(), energymlObject, patchPath + trianglesPath.getKey(), workspace)).stream()
-                            .map(l -> l.stream().map(v -> Long.valueOf(String.valueOf(v ))).collect(Collectors.toList())).collect(Collectors.toList()));
+                    List<?> indices = readArray(trianglesPath.getValue(), energymlObject, patchPath + trianglesPath.getKey(), workspace);
+                    if(indices.get(0) instanceof Collection){
+                        trianglesList_obj.addAll(((List<List<?>>)indices).stream()
+                            .map(l -> l.stream().map(v -> ((Number)v).longValue()).collect(Collectors.toList())).collect(Collectors.toList()));
+                    }else{ // indices given flat
+                        for(int i=0; i<indices.size()-2; i++){
+                            trianglesList_obj.add(new ArrayList<>(List.of(
+                                    ((Number)indices.get(i)).longValue(),
+                                    ((Number)indices.get(i+1)).longValue(),
+                                    ((Number)indices.get(i+2)).longValue()
+                            )));
+                        }
+                    }
                 }
 //                logger.info("Triangles {} {}", patchPath, trianglesList_obj);
-                final long finalPointOffset = pointOffset;
-                List<List<Long>> trianglesList = trianglesList_obj.stream()
-                        .map(l-> l.stream().map(ti -> ti - finalPointOffset)
-                                .collect(Collectors.toList()))
-                        .collect(Collectors.toList());
+//                final long finalPointOffset = pointOffset;
+//                List<List<Long>> trianglesList = trianglesList_obj.stream()
+//                        .map(l-> l.stream().map(ti -> ti - finalPointOffset)
+//                                .collect(Collectors.toList()))
+//                        .collect(Collectors.toList());
 
                 meshes.add(new SurfaceMesh(
                         energymlObject,
@@ -379,7 +404,8 @@ public class Mesh {
                         pointList,
                         String.format("%s_patch%d", EPCFile.getIdentifier(energymlObject), patchIdx),
 //                        new ArrayList<>(trianglesList.stream().collect(Collectors.groupingBy(s -> counter.getAndIncrement() / 3)).values())
-                        trianglesList
+//                        trianglesList
+                        trianglesList_obj
                 ));
 
                 pointOffset += pointList.size();

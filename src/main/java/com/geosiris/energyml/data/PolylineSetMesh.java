@@ -27,14 +27,14 @@ public class PolylineSetMesh extends AbstractMesh{
     public PolylineSetMesh(Object energymlObject, Object crsObject, List<List<Double>> point_list, String identifier, List<List<Long>> line_indices) {
         this.energymlObject = energymlObject;
         this.crsObject = crsObject;
-        this.point_list = point_list;
+        this.pointList = point_list;
         this.identifier = identifier;
         this.line_indices = line_indices;
     }
 
     @Override
     public Long getNbPoints() {
-        return this.point_list != null ? this.point_list.size() : 0L;
+        return this.pointList != null ? this.pointList.size() : 0L;
     }
 
     @Override

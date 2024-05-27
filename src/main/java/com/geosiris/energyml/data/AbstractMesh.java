@@ -21,11 +21,14 @@ public abstract class AbstractMesh implements MeshExporter{
     protected Object energymlObject;
     protected Object crsObject;
     protected String identifier;
-    protected List<?> point_list;
+    protected List<?> pointList;
 
     public abstract Long getNbPoints();
     public abstract Long getNbEdge();
     public abstract Long getNbFaces();
+    public List<?> getPointList(){
+        return pointList;
+    }
 
     public String getIdentifier() {
         return identifier;
