@@ -15,4 +15,4 @@ target/*
 pom-test.xml
 rc/*log4j2.properties
 logs
-src/test/manip
+src/test/manip*

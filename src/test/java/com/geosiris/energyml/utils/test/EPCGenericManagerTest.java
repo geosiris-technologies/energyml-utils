@@ -16,19 +16,14 @@ limitations under the License.
 package com.geosiris.energyml.utils.test;
 
 import com.geosiris.energyml.pkg.EPCFile;
-import com.geosiris.energyml.pkg.EPCPackageManager;
-import com.geosiris.energyml.utils.*;
+import com.geosiris.energyml.utils.EPCGenericManager;
+import com.geosiris.energyml.utils.ExportVersion;
+import com.geosiris.energyml.utils.ObjectController;
+import com.geosiris.energyml.utils.Utils;
 import energyml.common2_3.Citation;
-import energyml.relationships.Relationship;
-import energyml.relationships.Relationships;
 import energyml.resqml2_2.TriangulatedSetRepresentation;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -40,7 +35,8 @@ public class EPCGenericManagerTest {
     private final static String cName_act23 = "energyml.common2_3.Activity";
     private final static String cName_notExist0 = "energyml.unkownpkg2_3.Activity";
 
-    private final static TriangulatedSetRepresentation TR_TEST = createTestData_trSet();
+    private final static TriangulatedSetRepresentation TR_TEST = createTestData_trSet(null);
+    private final static TriangulatedSetRepresentation TR_TEST_VERSIONNED = createTestData_trSet("42");
 
 
     @Test
@@ -285,6 +281,11 @@ public class EPCGenericManagerTest {
     }
 
     @Test
+    void test_obj_version(){
+        assert Objects.equals(EPCFile.getObjectVersion(TR_TEST_VERSIONNED), "42");
+    }
+
+    @Test
     void test_reshape_version(){
         assert EPCGenericManager.reshapeVersion("v2.0.1", 0).compareTo("v2.0.1") == 0;
         assert EPCGenericManager.reshapeVersion("v2.0.1", 1).compareTo("2") == 0;
@@ -294,9 +295,12 @@ public class EPCGenericManagerTest {
         assert EPCGenericManager.reshapeVersion("v2.0.1.5.2.6.5.4", 4).compareTo("v2.0.1.5.2.6.5.4") == 0;
     }
 
-    public static TriangulatedSetRepresentation createTestData_trSet(){
+    public static TriangulatedSetRepresentation createTestData_trSet(String version){
         TriangulatedSetRepresentation tr = new TriangulatedSetRepresentation();
         tr.setUuid(UUID.randomUUID()+"");
+        if(version != null) {
+            tr.setObjectVersion(version);
+        }
 
         Citation cit = new Citation();
         cit.setCreation(Utils.getCalendarForNow());

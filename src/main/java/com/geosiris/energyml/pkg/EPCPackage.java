@@ -386,4 +386,8 @@ public class EPCPackage {
     public String getDevVersionNum() {
         return devVersionNum;
     }
+
+    public boolean matchNamespace(String namespace){
+        return namespace.toLowerCase().contains(domain.toLowerCase());
+    }
 }

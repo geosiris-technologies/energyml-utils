@@ -757,6 +757,7 @@ public class ObjectController {
     }
 
     public static List<Object> getObjectAttributeValueRgx(Object obj, String pathAttribute) {
+        if(obj == null) return null;
         String attribute = pathAttribute;
         while (attribute.startsWith(".")) {
             attribute = attribute.substring(1);
@@ -898,7 +899,6 @@ public class ObjectController {
         return superList;
     }
 
-
     public static Class<?> getSubAttributeClass(String path, Class<?> objClass, ParameterizedType templates) throws Exception {
         // TODO: utiliser les variations d'attributs
         String currentParam = path;
@@ -1024,6 +1024,10 @@ public class ObjectController {
         return classListResult;
     }
 
+    public static boolean isPrimitiveClass(Object obj) {
+        return obj != null && isPrimitiveClass(obj.getClass());
+    }
+
     public static boolean isPrimitiveClass(Class<?> initialClass) {
         return getAllJavaPrimitiveObjectClasses().stream().map(cl -> initialClass.getName().compareToIgnoreCase(cl.getName()) == 0).reduce(Boolean.FALSE, Boolean::logicalOr);
     }
@@ -1042,6 +1046,43 @@ public class ObjectController {
         );
     }
 
+    public static boolean classMatchRgx(
+            Object obj,
+            String rgx,
+            boolean superClassSearch,
+            int reFlags
+    ) {
+        if(obj != null)
+            return classMatchRgx(obj.getClass(), rgx, superClassSearch, reFlags);
+        return false;
+    }
+
+    public static boolean classMatchRgx(
+            Class<?> cls,
+            String rgx,
+            boolean superClassSearch,
+            int reFlags
+    ) {
+        if (cls == null) {
+            cls = Object.class;
+        }
+
+        Pattern pattern = Pattern.compile(rgx, reFlags);
+        Matcher matcher = pattern.matcher(cls.getSimpleName());
+        if (matcher.find()) {
+            return true;
+        }
+
+        if (!isPrimitiveClass(cls) && superClassSearch) {
+            for (Class<?> base : cls.getSuperclass().getClasses()) {
+                if (classMatchRgx(base, rgx, true, reFlags)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public static boolean isPropertyClass(Class<?> type) {
         return (!List.class.isAssignableFrom(type) && !type.getName().endsWith("Array"))
                 && (
@@ -1052,4 +1093,273 @@ public class ObjectController {
 
         // On filtre ces classes pour les mettre en propriete;
     }
+
+    public static List<Object> searchAttributeMatchingName(
+            Object obj,
+            String nameRegex
+    ) {
+        return new ArrayList<>(searchAttributeMatchingNameWithPath(obj, nameRegex).values());
+    }
+
+    public static Map<String, Object> searchAttributeMatchingNameWithPath(
+            Object obj,
+            String nameRegex
+    ) {
+        return searchAttributeMatchingNameWithPath(obj, nameRegex, Pattern.CASE_INSENSITIVE, "", true, true);
+    }
+
+    public static Map<String, Object> searchAttributeMatchingNameWithPath(
+            Object obj,
+            String nameRegex,
+            boolean searchInSubObj
+    ) {
+        return searchAttributeMatchingNameWithPath(obj, nameRegex, Pattern.CASE_INSENSITIVE, "", true, searchInSubObj);
+    }
+
+    public static List<Object> searchAttributeMatchingName(
+            Object obj,
+            String nameRegex,
+            int reFlags,
+            String currentPath,
+            boolean deepSearch,
+            boolean searchInSubObj
+    ) {
+        return new ArrayList<>(searchAttributeMatchingNameWithPath(obj, nameRegex, reFlags, currentPath, deepSearch, searchInSubObj).values());
+    }
+
+    public static Map<String, Object> searchAttributeMatchingNameWithPath(
+            Object obj,
+            String nameRegex,
+            int reFlags,
+            String currentPath,
+            boolean deepSearch,
+            boolean searchInSubObj
+    ) {
+//        logger.info("searchAttributeMatchingNameWithPath : {}", obj);
+//        logger.info("\tpath : {}", currentPath);
+        if(obj == null){
+            return new HashMap<>();
+        }
+        while (nameRegex.startsWith(".")) {
+            nameRegex = nameRegex.substring(1);
+        }
+        String currentMatch = nameRegex;
+        String nextMatch = currentMatch;
+        if (nameRegex.contains(".")) {
+            String[] attributeList = nameRegex.split("(?<!\\\\)\\.+");
+//            logger.info("\t{}", attributeList);
+            currentMatch = attributeList[0];
+            nextMatch = String.join(".", List.of(attributeList).subList(1, attributeList.length));
+        }
+//        currentMatch = currentMatch.replaceAll("\\.", ".");
+
+//        logger.info("\tcurrentMatch : {}", currentMatch);
+
+        Map<String, Object> result = new HashMap<>();
+
+        Map<String, Object> matchPathAndObj = new HashMap<>();
+        Map<String, Object> notMatchPathAndObj = new HashMap<>();
+        if (obj instanceof List) {
+            int cpt = 0;
+            for (Object subObj : (List<?>) obj) {
+                Matcher match = Pattern.compile(currentMatch, reFlags).matcher(String.valueOf(cpt));
+                if (match.find()) {
+                    matchPathAndObj.put(currentPath + "." + cpt, subObj);
+                } else {
+                    notMatchPathAndObj.put(currentPath + "." + cpt, subObj);
+                }
+                cpt++;
+            }
+        } else if (obj instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
+                Matcher match = Pattern.compile(currentMatch, reFlags).matcher(String.valueOf(entry.getKey()));
+                if (match.find()) {
+                    matchPathAndObj.put(currentPath + "." + entry.getKey(), entry.getValue());
+                } else {
+                    notMatchPathAndObj.put(currentPath + "." + entry.getKey(), entry.getValue());
+                }
+            }
+        } else if (!isPrimitiveClass(obj)) {
+
+            for (Pair<Class<?>, String> attributeName : getClassAttributes(obj.getClass())) {
+                Matcher match = Pattern.compile(currentMatch, reFlags).matcher(attributeName.r());
+                if (match.find()) {
+//                    logger.info("\t=====: {}, {}, {}", attributeName.r(), match.matches(), attributeName);
+                    matchPathAndObj.put(currentPath + "." + attributeName.r(), getObjectAttributeValue(obj, attributeName.r()));
+                }else{
+                    notMatchPathAndObj.put(currentPath + "." + attributeName.r(), getObjectAttributeValue(obj, attributeName.r()));
+                }
+            }
+        }
+
+//        if(!matchPathAndObj.isEmpty())
+//            logger.info("\tmatchPathAndObj: {}", matchPathAndObj);
+//        if(!notMatchPathAndObj.isEmpty())
+//            logger.info("\tnotMatchPathAndObj: {}", notMatchPathAndObj);
+
+        for (Map.Entry<String, Object> matched : matchPathAndObj.entrySet()) {
+//            logger.info("\tcurrentMatch: {}", currentMatch);
+//            logger.info("\tnextMatch: {}", nextMatch);
+            if (!currentMatch.equals(nextMatch) && nextMatch.length() > 0) { // next_match is different, match is not final
+                result.putAll(searchAttributeMatchingNameWithPath(
+                        matched.getValue(),
+                        nextMatch,
+                        reFlags,
+                        matched.getKey(),
+                        false, // no deep with partial
+                        false // no partial search in sub obj with no match
+                ));
+            } else { // a complete match
+                result.put(matched.getKey(), matched.getValue());
+//                logger.info("\tresult: {}", result);
+                if (deepSearch) {
+                    result.putAll(searchAttributeMatchingNameWithPath(
+                            matched.getValue(),
+                            nameRegex,
+                            reFlags,
+                            matched.getKey(),
+                            deepSearch,
+                            true
+                    ));
+                }
+            }
+        }
+        if (searchInSubObj) {
+            for (Map.Entry<String, Object> notMatched : notMatchPathAndObj.entrySet()) {
+                result.putAll(searchAttributeMatchingNameWithPath(
+                        notMatched.getValue(),
+                        nameRegex,
+                        reFlags,
+                        notMatched.getKey(),
+                        deepSearch,
+                        true
+                ));
+            }
+        }
+
+        return result;
+    }
+
+    public static Object searchAttributeInUpperMatchingName(
+            Object obj,
+            String nameRgx,
+            Object rootObj,
+            String currentPath
+    ) {
+        return searchAttributeInUpperMatchingName(obj, nameRgx, rootObj, Pattern.CASE_INSENSITIVE, currentPath);
+    }
+
+    public static Object searchAttributeInUpperMatchingName(
+            Object obj,
+            String nameRgx,
+            Object rootObj,
+            int reFlags,
+            String currentPath
+    ) {
+        List<Object> eltList = searchAttributeMatchingName(obj, nameRgx, reFlags, "", false, false);
+        if (eltList != null && !eltList.isEmpty()) {
+            return eltList;
+        }
+
+        if (obj != rootObj) {
+            String upperPath = currentPath.substring(0, currentPath.lastIndexOf("."));
+            if (!upperPath.isEmpty()) {
+                return searchAttributeInUpperMatchingName(
+                        getObjectAttributeValue(rootObj, upperPath),
+                        nameRgx,
+                        rootObj,
+                        reFlags,
+                        upperPath
+                );
+            }
+        }
+
+        return null;
+    }
+
+    public static List<Object> searchAttributeMatchingType(
+            Object obj,
+            String typeRgx,
+            int reFlags,
+            boolean returnSelf,
+            boolean deepSearch,
+            boolean superClassSearch
+    ) {
+        return searchAttributeMatchingTypeWithPath(
+                obj,
+                typeRgx,
+                reFlags,
+                returnSelf,
+                deepSearch,
+                superClassSearch,
+                ""
+        ).stream()
+                .map(pathVal -> pathVal.getValue())
+                .collect(Collectors.toList());
+    }
+
+    public static List<Map.Entry<String, Object>> searchAttributeMatchingTypeWithPath(
+            Object obj,
+            String typeRgx,
+            int reFlags,
+            boolean returnSelf,
+            boolean deepSearch,
+            boolean superClassSearch,
+            String currentPath
+    ) {
+        List<Map.Entry<String, Object>> res = new ArrayList<>();
+        if (obj != null) {
+            if (returnSelf && classMatchRgx(obj, typeRgx, superClassSearch, reFlags)) {
+                res.add(new AbstractMap.SimpleEntry<>(currentPath, obj));
+                if (!deepSearch) {
+                    return res;
+                }
+            }
+        }else{
+            return new ArrayList<>();
+        }
+
+        if (obj instanceof List) {
+            int cpt = 0;
+            for (Object s_o : (List<?>) obj) {
+                res.addAll(searchAttributeMatchingTypeWithPath(
+                        s_o,
+                        typeRgx,
+                        reFlags,
+                        true,
+                        deepSearch,
+                        superClassSearch,
+                        currentPath + "." + cpt
+                ));
+                cpt++;
+            }
+        } else if (obj instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
+                res.addAll(searchAttributeMatchingTypeWithPath(
+                        entry.getValue(),
+                        typeRgx,
+                        reFlags,
+                        true,
+                        deepSearch,
+                        superClassSearch,
+                        currentPath + "." + entry.getKey()
+                ));
+            }
+        } else if (!isPrimitiveClass(obj)) {
+            for (Pair<Class<?>, String> att : getClassAttributes(obj.getClass())) {
+                res.addAll(searchAttributeMatchingTypeWithPath(
+                        getObjectAttributeValueRgx(obj, att.r()),
+                        typeRgx,
+                        reFlags,
+                        true,
+                        deepSearch,
+                        superClassSearch,
+                        currentPath + "." + att.r()
+                ));
+            }
+        }
+
+        return res;
+    }
+
 }

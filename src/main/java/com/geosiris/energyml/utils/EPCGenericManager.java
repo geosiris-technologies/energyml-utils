@@ -238,7 +238,7 @@ public class EPCGenericManager {
 
     /**
      * Retourne la liste des object qui reference l'uuid passe en parametre
-     * avec des Pair<ParameterName, Referencer_Object>
+     * avec des Pairs < ParameterName, Referencer_Object >
      */
     public static List<Pair<String, Object>> getAllReferencersDORParameters(String uuid, Map<String, Object> loadedObjects) {
         List<Pair<String, Object>> result = new ArrayList<>();
