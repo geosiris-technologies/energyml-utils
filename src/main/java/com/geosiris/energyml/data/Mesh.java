@@ -18,17 +18,22 @@ package com.geosiris.energyml.data;
 import com.geosiris.energyml.exception.NotImplementedException;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
 import com.geosiris.energyml.pkg.EPCFile;
+import com.geosiris.energyml.pkg.EpcHdf5FileManager;
 import com.geosiris.energyml.utils.EnergymlWorkspace;
 import com.geosiris.energyml.utils.ObjectController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.geosiris.energyml.data.SurfaceMesh.exportObj;
+import static com.geosiris.energyml.data.SurfaceMesh.exportOff;
 import static com.geosiris.energyml.utils.EnergymlWorkspaceHelper.*;
 import static com.geosiris.energyml.utils.ObjectController.searchAttributeMatchingNameWithPath;
 
@@ -318,7 +323,7 @@ public class Mesh {
         return meshes;
     }
 
-    public static List<SurfaceMesh> readTriangulatedSetRepresentation (Object energymlObject, EnergymlWorkspace
+    public static List<SurfaceMesh> readTriangulatedSetRepresentation(Object energymlObject, EnergymlWorkspace
             workspace) throws NotImplementedException, InvocationTargetException, IllegalAccessException {
         List<SurfaceMesh> meshes = new ArrayList<>();
         try {
@@ -359,7 +364,7 @@ public class Mesh {
                             pointList.addAll(((List<List<?>>) pl).stream()
                                     .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
                         } else { // pl given flat
-                            for (int i = 0; i < pl.size() - 2; i++) {
+                            for (int i = 0; i < pl.size() - 2; i+=3) {
                                 pointList.add(new ArrayList<>(List.of(
                                         ((Number) pl.get(i)).doubleValue(),
                                         ((Number) pl.get(i + 1)).doubleValue(),
@@ -382,7 +387,7 @@ public class Mesh {
                         trianglesList_obj.addAll(((List<List<?>>)indices).stream()
                             .map(l -> l.stream().map(v -> ((Number)v).longValue()).collect(Collectors.toList())).collect(Collectors.toList()));
                     }else{ // indices given flat
-                        for(int i=0; i<indices.size()-2; i++){
+                        for(int i=0; i<indices.size()-2; i+=3){
                             trianglesList_obj.add(new ArrayList<>(List.of(
                                     ((Number)indices.get(i)).longValue(),
                                     ((Number)indices.get(i+1)).longValue(),
@@ -417,4 +422,5 @@ public class Mesh {
 
         return meshes;
     }
+
 }
