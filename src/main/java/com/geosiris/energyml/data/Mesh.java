@@ -17,28 +17,19 @@ package com.geosiris.energyml.data;
 
 import com.geosiris.energyml.exception.NotImplementedException;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
-import com.geosiris.energyml.pkg.EPCFile;
-import com.geosiris.energyml.pkg.EPCPackageManager;
-import com.geosiris.energyml.pkg.EpcHdf5FileManager;
 import com.geosiris.energyml.utils.EnergymlWorkspace;
 import com.geosiris.energyml.utils.EnergymlWorkspaceHelper;
 import com.geosiris.energyml.utils.ObjectController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.geosiris.energyml.data.SurfaceMesh.exportObj;
-import static com.geosiris.energyml.data.SurfaceMesh.exportOff;
-import static com.geosiris.energyml.pkg.EPCFile.*;
+import static com.geosiris.energyml.pkg.EPCFile.getIdentifier;
 import static com.geosiris.energyml.utils.EnergymlWorkspaceHelper.*;
 import static com.geosiris.energyml.utils.ObjectController.searchAttributeMatchingNameWithPath;
 
@@ -90,7 +81,7 @@ public class Mesh {
 
             List<List<Double>> points = new ArrayList<>();
             List<?> pl = readArray(pointsObj, energymlObject, pointsPathInObj, workspace);
-            if(pl.size() > 0) {
+            if(!pl.isEmpty()) {
                 if (pl.get(0) instanceof Collection) {
                     points.addAll(((List<List<?>>) pl).stream()
                             .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
@@ -111,14 +102,12 @@ public class Mesh {
             try {
                 crs = getCrsObj(pointsObj, pointsPathInObj, energymlObject, workspace);
             } catch (ObjectNotFoundNotError ignore) {}
-            if (points != null) {
-                meshes.add(new PointSetMesh(
-                        energymlObject,
-                        crs,
-                        points,
-                        String.format("NodePatch num %d", patchIdx)
-                ));
-            }
+            meshes.add(new PointSetMesh(
+                    energymlObject,
+                    crs,
+                    points,
+                    String.format("NodePatch num %d", patchIdx)
+            ));
 
             patchIdx++;
         }
@@ -130,7 +119,7 @@ public class Mesh {
             Object pointsObj = e.getValue();
             List<List<Double>> points = new ArrayList<>();
             List<?> pl = readArray(pointsObj, energymlObject, pointsPathInObj, workspace);
-            if(pl.size() > 0) {
+            if(!pl.isEmpty()) {
                 if (pl.get(0) instanceof Collection) {
                     points.addAll(((List<List<?>>) pl).stream()
                             .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
@@ -151,14 +140,12 @@ public class Mesh {
             try {
                 crs = getCrsObj(pointsObj, pointsPathInObj, energymlObject, workspace);
             } catch (ObjectNotFoundNotError ignore) {}
-            if (points != null) {
-                meshes.add(new PointSetMesh(
-                        energymlObject,
-                        crs,
-                        points,
-                        String.format("NodePatchGeometry num %d", patchIdx)
-                ));
-            }
+            meshes.add(new PointSetMesh(
+                    energymlObject,
+                    crs,
+                    points,
+                    String.format("NodePatchGeometry num %d", patchIdx)
+            ));
 
             patchIdx++;
         }
@@ -180,7 +167,7 @@ public class Mesh {
 
                 List<List<Double>> points = new ArrayList<>();
                 List<?> pl = EnergymlWorkspaceHelper.readArray(pointsObj, energymlObject, patchPathInObj + pointsPath, workspace);
-                if(pl.size() > 0) {
+                if(!pl.isEmpty()) {
                     if (pl.get(0) instanceof Collection) {
                         points.addAll(((List<List<?>>) pl).stream()
                                 .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
@@ -235,7 +222,7 @@ public class Mesh {
                 }
 
                 if (pointIndices == null || pointIndices.isEmpty()) {
-                    pointIndices = new ArrayList<List<Long>>(Collections.singleton(new ArrayList<Long>(IntStream.range(0, points.size()).mapToObj(Long::valueOf).collect(Collectors.toList()))));
+                    pointIndices = new ArrayList<>(Collections.singleton(new ArrayList<>(IntStream.range(0, points.size()).mapToObj(Long::valueOf).collect(Collectors.toList()))));
                 }
 
                 if (!points.isEmpty()) {
@@ -257,11 +244,11 @@ public class Mesh {
         return meshes;
     }
 
-    public static List<SurfaceMesh> readGrid2dRepresentation(Object energymlObject, EnergymlWorkspace workspace) throws NotImplementedException, InvocationTargetException, IllegalAccessException {
+    public static List<SurfaceMesh> readGrid2dRepresentation(Object energymlObject, EnergymlWorkspace workspace) {
         return readGrid2dRepresentationHolable(energymlObject, workspace, false);
     }
 
-    public static List<SurfaceMesh> readGrid2dRepresentationHolable(Object energymlObject, EnergymlWorkspace workspace, boolean keepHoles) throws NotImplementedException, InvocationTargetException, IllegalAccessException {
+    public static List<SurfaceMesh> readGrid2dRepresentationHolable(Object energymlObject, EnergymlWorkspace workspace, boolean keepHoles) {
         List<SurfaceMesh> meshes = new ArrayList<>();
         try {
             logger.debug("keepHoles {}", keepHoles);
@@ -298,7 +285,7 @@ public class Mesh {
                 List<List<Long>> indices = new ArrayList<>();
                 if (!keepHoles) {
                     for (var i = 0; i < points.size(); i++) {
-                        long lineSize = points.get((int) i).size();
+                        long lineSize = points.get(i).size();
                         for (var j = 0; j < lineSize; j++) {
                             List<Double> p = points.get(i).get(j);
                             if(!Double.isNaN(p.get(2))) {
@@ -319,7 +306,7 @@ public class Mesh {
                                 i * lineSize + j + 1
                         ));
                         if(!keepHoles){
-                            faceIdx = faceIdx.stream().map(_x -> indiceToFinalIndice.get(_x)).collect(Collectors.toList());
+                            faceIdx = faceIdx.stream().map(indiceToFinalIndice::get).collect(Collectors.toList());
                         }
                         if(!faceIdx.contains(null))
                             indices.add(faceIdx);
@@ -385,12 +372,12 @@ public class Mesh {
     }
 
     public static List<SurfaceMesh> readTriangulatedSetRepresentation(Object energymlObject, EnergymlWorkspace
-            workspace) throws NotImplementedException, InvocationTargetException, IllegalAccessException {
+            workspace) {
         List<SurfaceMesh> meshes = new ArrayList<>();
         try {
             Object crs = null;
 
-            long pointOffset = 0;
+            // long pointOffset = 0;
             long patchIdx = 0;
             var patchPathInObjMap = searchAttributeMatchingNameWithPath(energymlObject, "TrianglePatch.\\d+", false);
 
@@ -420,7 +407,7 @@ public class Mesh {
                 List<List<Double>> pointList = new ArrayList<>();
                 for (var pointPath : searchAttributeMatchingNameWithPath(patch, "Geometry.Points").entrySet()) {
                     List<?> pl = readArray(pointPath.getValue(), energymlObject, patchPath + pointPath.getKey(), workspace);
-                    if(pl.size() > 0) {
+                    if(!pl.isEmpty()) {
                         if (pl.get(0) instanceof Collection) {
                             pointList.addAll(((List<List<?>>) pl).stream()
                                     .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
@@ -474,7 +461,7 @@ public class Mesh {
                         trianglesList_obj
                 ));
 
-                pointOffset += pointList.size();
+                // pointOffset += pointList.size();
                 patchIdx++;
             }
         }catch (Exception e){
