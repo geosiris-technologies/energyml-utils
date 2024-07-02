@@ -18,8 +18,10 @@ package com.geosiris.energyml.data;
 import com.geosiris.energyml.exception.NotImplementedException;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
 import com.geosiris.energyml.pkg.EPCFile;
+import com.geosiris.energyml.pkg.EPCPackageManager;
 import com.geosiris.energyml.pkg.EpcHdf5FileManager;
 import com.geosiris.energyml.utils.EnergymlWorkspace;
+import com.geosiris.energyml.utils.EnergymlWorkspaceHelper;
 import com.geosiris.energyml.utils.ObjectController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,12 +30,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.geosiris.energyml.data.SurfaceMesh.exportObj;
 import static com.geosiris.energyml.data.SurfaceMesh.exportOff;
+import static com.geosiris.energyml.pkg.EPCFile.*;
 import static com.geosiris.energyml.utils.EnergymlWorkspaceHelper.*;
 import static com.geosiris.energyml.utils.ObjectController.searchAttributeMatchingNameWithPath;
 
@@ -82,7 +87,25 @@ public class Mesh {
         for(Map.Entry<String, Object> e: pointsPathInObjMap.entrySet()) {
             String pointsPathInObj = e.getKey();
             Object pointsObj = e.getValue();
-            List<List<Double>> points = (List<List<Double>>) readArray(pointsObj, energymlObject, pointsPathInObj, workspace);
+
+            List<List<Double>> points = new ArrayList<>();
+            List<?> pl = readArray(pointsObj, energymlObject, pointsPathInObj, workspace);
+            if(pl.size() > 0) {
+                if (pl.get(0) instanceof Collection) {
+                    points.addAll(((List<List<?>>) pl).stream()
+                            .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
+                } else { // pl given flat
+                    for (int i = 0; i < pl.size() - 2; i+=3) {
+                        points.add(new ArrayList<>(List.of(
+                                ((Number) pl.get(i)).doubleValue(),
+                                ((Number) pl.get(i + 1)).doubleValue(),
+                                ((Number) pl.get(i + 2)).doubleValue()
+                        )));
+                    }
+                }
+            }else{
+                logger.info("Size is 0 for {}", pointsPathInObj);
+            }
 
             Object crs = null;
             try {
@@ -105,7 +128,24 @@ public class Mesh {
         for(Map.Entry<String, Object> e: pointsPathInObjMap.entrySet()) {
             String pointsPathInObj = e.getKey();
             Object pointsObj = e.getValue();
-            List<List<Double>> points = (List<List<Double>>) readArray(pointsObj, energymlObject, pointsPathInObj, workspace);
+            List<List<Double>> points = new ArrayList<>();
+            List<?> pl = readArray(pointsObj, energymlObject, pointsPathInObj, workspace);
+            if(pl.size() > 0) {
+                if (pl.get(0) instanceof Collection) {
+                    points.addAll(((List<List<?>>) pl).stream()
+                            .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
+                } else { // pl given flat
+                    for (int i = 0; i < pl.size() - 2; i+=3) {
+                        points.add(new ArrayList<>(List.of(
+                                ((Number) pl.get(i)).doubleValue(),
+                                ((Number) pl.get(i + 1)).doubleValue(),
+                                ((Number) pl.get(i + 2)).doubleValue()
+                        )));
+                    }
+                }
+            }else{
+                logger.info("Size is 0 for {}", pointsPathInObj);
+            }
 
             Object crs = null;
             try {
@@ -137,7 +177,25 @@ public class Mesh {
                 Map.Entry<String, Object> entry = searchAttributeMatchingNameWithPath(patch, "Geometry.Points").entrySet().iterator().next();
                 String pointsPath = entry.getKey();
                 Object pointsObj = entry.getValue();
-                List<List<Double>> points = (List<List<Double>>) readArray(pointsObj, energymlObject, patchPathInObj + pointsPath, workspace);
+
+                List<List<Double>> points = new ArrayList<>();
+                List<?> pl = EnergymlWorkspaceHelper.readArray(pointsObj, energymlObject, patchPathInObj + pointsPath, workspace);
+                if(pl.size() > 0) {
+                    if (pl.get(0) instanceof Collection) {
+                        points.addAll(((List<List<?>>) pl).stream()
+                                .map(l -> l.stream().map(v -> ((Number) v).doubleValue()).collect(Collectors.toList())).collect(Collectors.toList()));
+                    } else { // pl given flat
+                        for (int i = 0; i < pl.size() - 2; i+=3) {
+                            points.add(new ArrayList<>(List.of(
+                                    ((Number) pl.get(i)).doubleValue(),
+                                    ((Number) pl.get(i + 1)).doubleValue(),
+                                    ((Number) pl.get(i + 2)).doubleValue()
+                            )));
+                        }
+                    }
+                }else{
+                    logger.info("Size is 0 for {}", patch);
+                }
 
                 Object crs = null;
                 try {
@@ -156,14 +214,13 @@ public class Mesh {
                     String nodeCountPerPolyPathInObj = nodeCountPerPolyPathInObjEntry.getKey();
                     Object nodeCountPerPoly = nodeCountPerPolyPathInObjEntry.getValue();
                     List<Long> nodeCountsList = readArray(nodeCountPerPoly, energymlObject, patchPathInObj + nodeCountPerPolyPathInObj, workspace).stream()
-                            .map(v -> Long.valueOf(String.valueOf(v ))).collect(Collectors.toList());
+                            .map(v -> ((Number)v).longValue()).collect(Collectors.toList());
                     long idx = 0;
                     int polyIdx = 0;
                     pointIndices = new ArrayList<>();
                     for (Long nbNode : nodeCountsList) {
                         pointIndices.add(IntStream.range((int) idx, (int) idx + nbNode.intValue())
                                 .boxed().map(Long::valueOf).collect(Collectors.toList()));
-//                                .boxed().map(i->Long.valueOf(String.valueOf(i))).collect(Collectors.toList()));
                         if (closePoly != null && closePoly.size() > polyIdx && closePoly.get(polyIdx) != null) {
                             pointIndices.get(pointIndices.size() - 1).add(idx);
                         }
@@ -171,6 +228,10 @@ public class Mesh {
                         polyIdx++;
                     }
                 } catch (IndexOutOfBoundsException ignore) {
+                }
+
+                if(isZReversed(crs)){
+                    points.forEach(l->l.set(2, -l.get(2)));
                 }
 
                 if (pointIndices == null || pointIndices.isEmpty()) {
@@ -182,7 +243,7 @@ public class Mesh {
                             energymlObject,
                             crs,
                             points,
-                            String.format("%s_patch%d", EPCFile.getIdentifier(energymlObject), patchIdx),
+                            String.format("%s_patch%d", getIdentifier(energymlObject), patchIdx),
                             pointIndices
                     ));
                 }
@@ -223,13 +284,13 @@ public class Mesh {
 
                 boolean finalReverseZValues = reverseZValues;
                 points.forEach(l -> l.forEach(p -> {
-                        if(Double.isNaN(p.get(2))) {
-                            if (keepHoles)
-                                p.set(2, 0.);
-                        }else if(finalReverseZValues){
-                            p.set(2, -p.get(2));
-                        }
-                    }));
+                    if(Double.isNaN(p.get(2))) {
+                        if (keepHoles)
+                            p.set(2, 0.);
+                    }else if(finalReverseZValues){
+                        p.set(2, -p.get(2));
+                    }
+                }));
 
                 List<List<Double>> pointsNoNaN = new ArrayList<>();
                 var indiceToFinalIndice = new HashMap<Long, Long>();
@@ -269,7 +330,7 @@ public class Mesh {
                         energymlObject,
                         crs,
                         keepHoles ? points.stream().flatMap(List::stream).collect(Collectors.toList()) : pointsNoNaN,
-                        String.format("%s_patch%d", EPCFile.getIdentifier(energymlObject), patchIdx),
+                        String.format("%s_patch%d", getIdentifier(energymlObject), patchIdx),
                         indices
                 ));
 
@@ -303,16 +364,16 @@ public class Mesh {
 
                 boolean finalReverseZValues = reverseZValues;
                 points.forEach(l -> l.forEach(p -> {
-                        if(!Double.isNaN(p.get(2)) && finalReverseZValues){
-                            p.set(2, -p.get(2));
-                        }
-                    }));
+                    if(!Double.isNaN(p.get(2)) && finalReverseZValues){
+                        p.set(2, -p.get(2));
+                    }
+                }));
 
                 meshes.add(new GridedPointSetMesh(
                         energymlObject,
                         crs,
                         points,
-                        String.format("%s_patch%d", EPCFile.getIdentifier(energymlObject), patchIdx)
+                        String.format("%s_patch%d", getIdentifier(energymlObject), patchIdx)
                 ));
 
                 patchIdx++;
@@ -385,7 +446,7 @@ public class Mesh {
                     List<?> indices = readArray(trianglesPath.getValue(), energymlObject, patchPath + trianglesPath.getKey(), workspace);
                     if(indices.get(0) instanceof Collection){
                         trianglesList_obj.addAll(((List<List<?>>)indices).stream()
-                            .map(l -> l.stream().map(v -> ((Number)v).longValue()).collect(Collectors.toList())).collect(Collectors.toList()));
+                                .map(l -> l.stream().map(v -> ((Number)v).longValue()).collect(Collectors.toList())).collect(Collectors.toList()));
                     }else{ // indices given flat
                         for(int i=0; i<indices.size()-2; i+=3){
                             trianglesList_obj.add(new ArrayList<>(List.of(
@@ -407,7 +468,7 @@ public class Mesh {
                         energymlObject,
                         crs,
                         pointList,
-                        String.format("%s_patch%d", EPCFile.getIdentifier(energymlObject), patchIdx),
+                        String.format("%s_patch%d", getIdentifier(energymlObject), patchIdx),
 //                        new ArrayList<>(trianglesList.stream().collect(Collectors.groupingBy(s -> counter.getAndIncrement() / 3)).values())
 //                        trianglesList
                         trianglesList_obj
@@ -422,5 +483,4 @@ public class Mesh {
 
         return meshes;
     }
-
 }
