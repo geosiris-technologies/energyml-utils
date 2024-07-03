@@ -34,4 +34,12 @@ public abstract class AbstractMesh implements MeshExporter{
         return identifier;
     }
     public abstract List<List<Long>> getEdgeIndices();
+
+    public Object getEnergymlObject() {
+        return energymlObject;
+    }
+
+    public Object getCrsObject() {
+        return crsObject;
+    }
 }
