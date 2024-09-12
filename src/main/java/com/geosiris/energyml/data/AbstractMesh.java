@@ -26,6 +26,7 @@ public abstract class AbstractMesh implements MeshExporter{
     public abstract Long getNbPoints();
     public abstract Long getNbEdge();
     public abstract Long getNbFaces();
+    
     public List<?> getPointList(){
         return pointList;
     }
@@ -33,6 +34,7 @@ public abstract class AbstractMesh implements MeshExporter{
     public String getIdentifier() {
         return identifier;
     }
+
     public abstract List<List<Long>> getEdgeIndices();
 
     public Object getEnergymlObject() {
