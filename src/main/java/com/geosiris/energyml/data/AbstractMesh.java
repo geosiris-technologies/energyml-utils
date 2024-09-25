@@ -26,7 +26,7 @@ public abstract class AbstractMesh implements MeshExporter{
     public abstract Long getNbPoints();
     public abstract Long getNbEdge();
     public abstract Long getNbFaces();
-    
+
     public List<?> getPointList(){
         return pointList;
     }

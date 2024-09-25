@@ -17,23 +17,18 @@ package com.geosiris.energyml.data;
 
 import com.geosiris.energyml.exception.NotImplementedException;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
-import com.geosiris.energyml.pkg.EpcHdf5FileManager;
 import com.geosiris.energyml.utils.EnergymlWorkspace;
 import com.geosiris.energyml.utils.EnergymlWorkspaceHelper;
 import com.geosiris.energyml.utils.ObjectController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.geosiris.energyml.data.SurfaceMesh.exportObj;
-import static com.geosiris.energyml.data.SurfaceMesh.exportOff;
 import static com.geosiris.energyml.pkg.EPCFile.getIdentifier;
 import static com.geosiris.energyml.utils.EnergymlWorkspaceHelper.*;
 import static com.geosiris.energyml.utils.ObjectController.searchAttributeMatchingNameWithPath;
@@ -480,18 +475,5 @@ public class Mesh {
         }
 
         return meshes;
-    }
-
-    public static void main(String[] argv) throws IOException, InvocationTargetException, IllegalAccessException {
-        EpcHdf5FileManager m201 = EpcHdf5FileManager.readEpc("D:/UniversitePoitiers/git/gitlab-xlim/demos/geosimplification/rc/resqml/2.0.1/Volve_Horizons_and_Faults_Depth_originEQN_Plus.epc");
-        String uuidGrid = "46185c73-6cac-4de0-b962-5699b75d0bd4";
-        List<AbstractMesh> meshesGrid = Mesh.readMeshObject(m201.getObjectByUUID(uuidGrid), m201);
-        exportObj(meshesGrid, new FileOutputStream("D:/grid_"+uuidGrid+".obj"), "test", false);
-        exportOff(meshesGrid, new FileOutputStream("D:/grid_"+uuidGrid+".off"), "test", false);
-
-        String uuidPoly = "4e23ee3e-54a7-427a-83f9-1473de6c56a4";
-        List<AbstractMesh> meshesPoly = Mesh.readMeshObject(m201.   getObjectByUUID(uuidPoly), m201);
-        exportObj(meshesPoly, new FileOutputStream("D:/poly_"+uuidPoly+".obj"), "test", false);
-        exportOff(meshesPoly, new FileOutputStream("D:/poly_"+uuidPoly+".off"), "test", false);
     }
 }
