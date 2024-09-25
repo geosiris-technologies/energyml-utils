@@ -426,8 +426,7 @@ public class EPCPackageManager {
         logger.error("Modifying instance " + instance);
         if (instance != null) {
             String objClassNameLower = instance.getClass().getName().toLowerCase();
-            if (objClassNameLower.endsWith("dataobjectreference")
-                    || objClassNameLower.endsWith("contactelementreference")) {
+            if (ObjectController.hasSuperClassSuffix(instance.getClass(), "DataObjectReference")) {
                 // value must be an uuid
                 try {
                     ObjectController.editObjectAttribute(instance, "uuid", value);

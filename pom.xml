@@ -4,7 +4,7 @@
     <groupId>com.geosiris</groupId>
     <artifactId>energyml-utils</artifactId>
     <name>${project.groupId}:${project.artifactId}</name>
-    <version>1.0.12</version>
+    <version>${revision}${sha1}${changelist}</version>
     <organization>
         <name>Geosiris</name>
         <url>http://www.geosiris.com</url>
@@ -43,6 +43,10 @@
         <test.dir>${project.basedir}/src/test</test.dir>
         <sonar.organization>geosiris-technologies</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <revision>1.0.13</revision>
+        <changelist>-SNAPSHOT</changelist>
+        <sha1/>
+        <nameSuffix/>
     </properties>
     <dependencies>
         <dependency>
@@ -65,6 +69,11 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jhdf</groupId>
+            <artifactId>jhdf</artifactId>
+            <version>0.6.10</version>
         </dependency>
         <!-- LOGS -->
         <dependency>
@@ -114,12 +123,6 @@
             <version>1.0.4</version>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-            <groupId>io.jhdf</groupId>
-            <artifactId>jhdf</artifactId>
-            <version>0.6.10</version>
-        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -148,6 +151,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.4</version>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
@@ -226,6 +230,38 @@
                     </plugin>
                 </plugins>
             </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.junit.jupiter</groupId>
+                    <artifactId>junit-jupiter-api</artifactId>
+                    <version>5.9.1</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.junit.jupiter</groupId>
+                    <artifactId>junit-jupiter-engine</artifactId>
+                    <version>5.9.1</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.geosiris</groupId>
+                    <artifactId>energyml-resqml22</artifactId>
+                    <version>1.0.4</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.geosiris</groupId>
+                    <artifactId>energyml-resqml22-dev3</artifactId>
+                    <version>1.0.4</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.geosiris</groupId>
+                    <artifactId>energyml-resqml201</artifactId>
+                    <version>1.0.4</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.geosiris</groupId>
+                    <artifactId>energyml-witsml21</artifactId>
+                    <version>1.0.4</version>
+                </dependency>
+            </dependencies>
         </profile>
     </profiles>
 </project>

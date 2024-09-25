@@ -13,10 +13,10 @@ jobs:
       packages: write
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up JDK 11
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'temurin'
@@ -30,8 +30,20 @@ jobs:
       name: Install gpg secret key
       run: cat <(echo -e "${{ secrets.OSSRH_GPG_SECRET_KEY }}") | gpg --batch --import
 
+#    - name: Change version to SHA name
+#      run: mvn versions:set -Dsha1=-"${{ github.sha }}"
+
     - name: Unit test
       run: |
         PROJECT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
         echo "jar_version=${PROJECT_VERSION}" >> $GITHUB_OUTPUT
         mvn -B --file pom.xml clean test -P test
+
+    - name: Build with Maven
+      run: mvn -B --file pom.xml clean deploy -P release
+      env:
+        MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
+        GITHUB_TOKEN: ${{ github.token }}
+

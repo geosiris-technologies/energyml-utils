@@ -102,6 +102,11 @@ public class Mesh {
             try {
                 crs = getCrsObj(pointsObj, pointsPathInObj, energymlObject, workspace);
             } catch (ObjectNotFoundNotError ignore) {}
+
+            if(isZReversed(crs)){
+                points.forEach(l->l.set(2, -l.get(2)));
+            }
+
             meshes.add(new PointSetMesh(
                     energymlObject,
                     crs,
@@ -140,6 +145,7 @@ public class Mesh {
             try {
                 crs = getCrsObj(pointsObj, pointsPathInObj, energymlObject, workspace);
             } catch (ObjectNotFoundNotError ignore) {}
+
             meshes.add(new PointSetMesh(
                     energymlObject,
                     crs,
