@@ -170,7 +170,7 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
                 }
                 Object extPartRefObj = epc.getObjectByIdentifier(
                         EPCFile.getIdentifier(
-                                ObjectController.getObjectAttributeValueRgx(extFileProxy, "epcExternalPartReference")
+                                ObjectController.getObjectAttributeValueRgx(extFileProxy, "epcExternalPartReference").get(0)
                         )
                 );
                 return getH5PathPossibilities((String) ObjectController.getObjectAttributeValue(extPartRefObj, "Filename"), epc);

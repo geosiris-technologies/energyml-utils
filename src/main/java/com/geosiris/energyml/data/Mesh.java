@@ -17,6 +17,7 @@ package com.geosiris.energyml.data;
 
 import com.geosiris.energyml.exception.NotImplementedException;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
+import com.geosiris.energyml.utils.EPCGenericManager;
 import com.geosiris.energyml.utils.EnergymlWorkspace;
 import com.geosiris.energyml.utils.EnergymlWorkspaceHelper;
 import com.geosiris.energyml.utils.ObjectController;
@@ -266,6 +267,9 @@ public class Mesh {
 
             long patchIdx = 0;
             var patchPathInObjMap = searchAttributeMatchingNameWithPath(energymlObject, "Grid2dPatch");
+            if(EPCGenericManager.getObjectQualifiedType(energymlObject).contains("resqml22.")){
+                patchPathInObjMap.put("", energymlObject);  // Resqml 22
+            }
             for (Map.Entry<String, Object> e : patchPathInObjMap.entrySet()) {
                 String patchPath = e.getKey();
                 Object patch = e.getValue();
@@ -346,6 +350,9 @@ public class Mesh {
 
             long patchIdx = 0;
             var patchPathInObjMap = searchAttributeMatchingNameWithPath(energymlObject, "Grid2dPatch");
+            if(EPCGenericManager.getObjectQualifiedType(energymlObject).contains("resqml22.")){
+                patchPathInObjMap.put("", energymlObject);  // Resqml 22
+            }
             for (Map.Entry<String, Object> e : patchPathInObjMap.entrySet()) {
                 String patchPath = e.getKey();
                 Object patch = e.getValue();
@@ -480,4 +487,5 @@ public class Mesh {
 
         return meshes;
     }
+
 }
