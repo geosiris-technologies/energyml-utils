@@ -743,11 +743,11 @@ public class ObjectController {
 
     public static List<Method> getAttributeAccessMethodRgx(Object obj, String attributeRgx){
         List<Method> res = new ArrayList<>();
-        Pattern pat = Pattern.compile("(get|is)?" + attributeRgx, Pattern.CASE_INSENSITIVE);
+        Pattern pat = Pattern.compile("(get|is)?(" + attributeRgx +")", Pattern.CASE_INSENSITIVE);
         for(Method m : obj.getClass().getMethods()){
             if (m.getParameterCount() == 0) {
                 Matcher matcher = pat.matcher(m.getName());
-                if (matcher.find()) {
+                if (matcher.matches()) {
                     res.add(m);
                 }
             }
@@ -757,7 +757,7 @@ public class ObjectController {
     }
 
     public static List<Object> getObjectAttributeValueRgx(Object obj, String pathAttribute) {
-        if(obj == null) return null;
+        if(obj == null) return new ArrayList<>();
         String attribute = pathAttribute;
         while (attribute.startsWith(".")) {
             attribute = attribute.substring(1);
@@ -806,9 +806,10 @@ public class ObjectController {
         }
 
         if (pathAttribute.contains(".")) {
-            final String nextAttribt = pathAttribute.substring(attribute.length() + 1);
+            final String nextAttrib = pathAttribute.substring(attribute.length() + 1);
             List<Object> flatten = new ArrayList<>();
-            result.stream().map(r -> getObjectAttributeValueRgx(r, nextAttribt)).forEach(l -> flatten.addAll((List<Object>) l));
+//            return result.stream().map(r -> getObjectAttributeValueRgx(r, nextAttrib)).flatMap(List::stream).collect(Collectors.toList());
+            result.stream().map(r -> getObjectAttributeValueRgx(r, nextAttrib)).filter(l -> l != null).forEach(l -> flatten.addAll((List<Object>) l));
             return flatten;
         } else {
             return result;
@@ -1261,11 +1262,19 @@ public class ObjectController {
             return eltList;
         }
 
-        if (obj != rootObj) {
+        if (!currentPath.isEmpty()){  //(obj != rootObj) {
             String upperPath = currentPath.substring(0, currentPath.lastIndexOf("."));
             if (!upperPath.isEmpty()) {
                 return searchAttributeInUpperMatchingName(
                         getObjectAttributeValue(rootObj, upperPath),
+                        nameRgx,
+                        rootObj,
+                        reFlags,
+                        upperPath
+                );
+            }else{
+                return searchAttributeInUpperMatchingName(
+                        rootObj,
                         nameRgx,
                         rootObj,
                         reFlags,

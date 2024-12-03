@@ -80,7 +80,7 @@ public class EnergymlWorkspaceHelper {
             EnergymlWorkspace workspace
     ) throws ObjectNotFoundNotError {
         if (workspace == null) {
-            System.out.println("@get_crs_obj no Epc file given");
+            logger.error("@get_crs_obj no Epc file given");
         } else {
             List<Object> crsList = searchAttributeMatchingName(contextObj, "\\.*Crs", Pattern.CASE_INSENSITIVE, "", false, true);
             if (!crsList.isEmpty()) {
@@ -111,10 +111,13 @@ public class EnergymlWorkspaceHelper {
     }
 
     public static List<Double> pointAsArray(Object point) {
+        Object c1 = ObjectController.getObjectAttributeValue(point, "coordinate1");
+        Object c2 = ObjectController.getObjectAttributeValue(point, "coordinate2");
+        Object c3 = ObjectController.getObjectAttributeValue(point, "coordinate3");
         return new ArrayList<>(Arrays.asList(
-                Double.valueOf(String.valueOf(ObjectController.getObjectAttributeValue(point, "coordinate1"))),
-                Double.valueOf(String.valueOf(ObjectController.getObjectAttributeValue(point, "coordinate2"))),
-                Double.valueOf(String.valueOf(ObjectController.getObjectAttributeValue(point, "coordinate3")))
+                c1 != null ? Double.valueOf(String.valueOf(c1)) : null,
+                c2 != null ? Double.valueOf(String.valueOf(c2)) : null,
+                c3 != null ? Double.valueOf(String.valueOf(c3)) : null
         ));
     }
 
@@ -143,7 +146,7 @@ public class EnergymlWorkspaceHelper {
     }
 
     public static List<Double> prodNTab(Double val, List<Double> tab) {
-        return tab.stream().map(x -> x * val).collect(Collectors.toList());
+        return tab.stream().map(x -> val != null && x != null ? x * val: null).collect(Collectors.toList());
     }
 
     public static List<Double> sumLists(List<Double> l1, List<Double> l2) {
@@ -361,9 +364,9 @@ public class EnergymlWorkspaceHelper {
             EnergymlWorkspace workspace
     ) throws InvocationTargetException, IllegalAccessException, NotImplementedException {
         Map<String, Object> pointsPathAndPointsObj = ObjectController.searchAttributeMatchingNameWithPath(patch, "Geometry.Points");
+        pointsPathAndPointsObj.putAll(ObjectController.searchAttributeMatchingNameWithPath(patch, "Points"));
         String pointsPath = pointsPathAndPointsObj.keySet().stream().findFirst().get();
         Object pointsObj = pointsPathAndPointsObj.get(pointsPath);
-
         return readArray(pointsObj, grid2d, pathInRoot + pointsPath, workspace);
     }
 
@@ -376,10 +379,10 @@ public class EnergymlWorkspaceHelper {
         List<List<List<Double>>> result = new ArrayList<>();
         try {
             List<Double> origin = pointAsArray(ObjectController.getObjectAttributeValue(energymlArray, "origin"));
-            List<Object> offset = (List<Object>) ObjectController.getObjectAttributeValue(energymlArray, "offset");
-            if (offset.size() == 2) {
-                Object slowest = offset.get(0);
-                Object fastest = offset.get(1);
+            List<?> offset = ObjectController.getObjectAttributeValueRgx(energymlArray, "offset|dimension");
+            if (((List<?>)offset.get(0)).size() == 2) {
+                Object slowest = ((List<?>)offset.get(0)).get(0);
+                Object fastest = ((List<?>)offset.get(0)).get(1);
 
                 List<Integer> crsSaCount = ((List<Number>) searchAttributeInUpperMatchingName(energymlArray, "SlowestAxisCount", rootObj, pathInRoot)).stream()
                         .map(n -> n.intValue())
@@ -387,7 +390,6 @@ public class EnergymlWorkspaceHelper {
                 List<Integer> crsFaCount = ((List<Number>) searchAttributeInUpperMatchingName(energymlArray, "FastestAxisCount", rootObj, pathInRoot)).stream()
                         .map(n -> n.intValue())
                         .collect(Collectors.toList());
-
                 Object crs = null;
                 try {
                     crs = getCrsObj(energymlArray, pathInRoot, rootObj, workspace);
@@ -397,15 +399,16 @@ public class EnergymlWorkspaceHelper {
 
                 boolean zIncreasingDownward = isZReversed(crs);
 
-                List<Double> slowestVec = pointAsArray(ObjectController.getObjectAttributeValue(slowest, "offset"));
+                List<Double> slowestVec = pointAsArray(ObjectController.getObjectAttributeValueRgx(slowest, "offset|direction").get(0));
+
 //                List<Double> slowestSpacing = (List<Double>) readArray(ObjectController.getObjectAttributeValue(slowest, "spacing"));
                 List<Double> slowestSpacing = (List<Double>) readArray(ObjectController.getObjectAttributeValue(zIncreasingDownward ? fastest: slowest, "spacing"));
                 List<List<Double>> slowestTable = new ArrayList<>();
-                for (Object spacing : slowestSpacing) {
-                    slowestTable.add(prodNTab(Double.valueOf(String.valueOf(spacing)), slowestVec));
+                for (Double spacing : slowestSpacing) {
+                    slowestTable.add(prodNTab(spacing, slowestVec));
                 }
 
-                List<Double> fastestVec = pointAsArray(ObjectController.getObjectAttributeValue(fastest, "offset"));
+                List<Double> fastestVec = pointAsArray(ObjectController.getObjectAttributeValueRgx(fastest, "offset|direction").get(0));
 //                List<Double> fastestSpacing = (List<Double>) readArray(ObjectController.getObjectAttributeValue(fastest, "spacing"));
                 List<Double> fastestSpacing = (List<Double>) readArray(ObjectController.getObjectAttributeValue(zIncreasingDownward ? slowest: fastest, "spacing"));
                 List<List<Double>> fastestTable = new ArrayList<>();
@@ -481,6 +484,7 @@ public class EnergymlWorkspaceHelper {
         }catch (Exception e){
             logger.error(e);
         }
+        logger.error(result);
 
         return result;
     }

@@ -17,18 +17,21 @@ package com.geosiris.energyml.data;
 
 import com.geosiris.energyml.exception.NotImplementedException;
 import com.geosiris.energyml.exception.ObjectNotFoundNotError;
-import com.geosiris.energyml.utils.EnergymlWorkspace;
-import com.geosiris.energyml.utils.EnergymlWorkspaceHelper;
-import com.geosiris.energyml.utils.ObjectController;
+import com.geosiris.energyml.pkg.EPCPackageManager;
+import com.geosiris.energyml.pkg.EpcHdf5FileManager;
+import com.geosiris.energyml.utils.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.geosiris.energyml.data.SurfaceMesh.exportObj;
 import static com.geosiris.energyml.pkg.EPCFile.getIdentifier;
 import static com.geosiris.energyml.utils.EnergymlWorkspaceHelper.*;
 import static com.geosiris.energyml.utils.ObjectController.searchAttributeMatchingNameWithPath;
@@ -266,6 +269,9 @@ public class Mesh {
 
             long patchIdx = 0;
             var patchPathInObjMap = searchAttributeMatchingNameWithPath(energymlObject, "Grid2dPatch");
+            if(EPCGenericManager.getObjectQualifiedType(energymlObject).contains("resqml22.")){
+                patchPathInObjMap.put("", energymlObject);  // Resqml 22
+            }
             for (Map.Entry<String, Object> e : patchPathInObjMap.entrySet()) {
                 String patchPath = e.getKey();
                 Object patch = e.getValue();
@@ -346,6 +352,9 @@ public class Mesh {
 
             long patchIdx = 0;
             var patchPathInObjMap = searchAttributeMatchingNameWithPath(energymlObject, "Grid2dPatch");
+            if(EPCGenericManager.getObjectQualifiedType(energymlObject).contains("resqml22.")){
+                patchPathInObjMap.put("", energymlObject);  // Resqml 22
+            }
             for (Map.Entry<String, Object> e : patchPathInObjMap.entrySet()) {
                 String patchPath = e.getKey();
                 Object patch = e.getValue();
@@ -480,4 +489,5 @@ public class Mesh {
 
         return meshes;
     }
+
 }
