@@ -294,7 +294,7 @@ public class EnergymlWorkspaceHelper {
                         workspace
                 );
             }catch (InvocationTargetException e){
-                logger.error("Failed to read Z values for " + energymlArray);
+                logger.error("Failed to read Z values for {}", energymlArray);
             }
 
             if(!zvaluesArray.isEmpty()) {

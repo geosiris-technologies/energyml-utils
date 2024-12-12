@@ -128,7 +128,7 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
             Object rootObj,
             EPCFile epc
     ) {
-        logger.debug(externalPathObj + " " + pathInRoot);
+        logger.debug("{} {}", externalPathObj, pathInRoot);
         if (externalPathObj instanceof String && pathInRoot != null) {
             // externalPathObj is maybe an attribute of an ExternalDataArrayPart, now search upper in the object
             String upperPath = pathInRoot.substring(0, pathInRoot.lastIndexOf("."));
