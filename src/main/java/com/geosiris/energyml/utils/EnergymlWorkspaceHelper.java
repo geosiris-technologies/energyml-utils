@@ -284,23 +284,30 @@ public class EnergymlWorkspaceHelper {
                     workspace
             );
             Object zvalues = ObjectController.getObjectAttributeValue(energymlArray, "ZValues");
-            List<?> zvaluesArray = readArray(
-                    zvalues,
-                    rootObj,
-                    pathInRoot + ".ZValues",
-                    workspace
-            );
+            List<?> zvaluesArray = new ArrayList<>();
 
-            List<Double> zvalueFlat = null;
-            if(zvaluesArray.get(0) instanceof Collection){
-                zvalueFlat = ((List<List<?>>)zvaluesArray).stream().flatMap(List::stream).map(z-> z instanceof String ? Double.parseDouble((String) z) : ((Number)z).doubleValue()).collect(Collectors.toList());
-            }else{
-                zvalueFlat = zvaluesArray.stream().map(z-> z instanceof String ? Double.parseDouble((String) z) : ((Number)z).doubleValue()).collect(Collectors.toList());
+            try {
+                zvaluesArray = readArray(
+                        zvalues,
+                        rootObj,
+                        pathInRoot + ".ZValues",
+                        workspace
+                );
+            }catch (InvocationTargetException e){
+                logger.error("Failed to read Z values for {}", energymlArray);
             }
-//            logger.info("supGeomArray : {}", (((List<?>)supGeomArray.get(0)).get(0)));
-//            logger.info("zvaluesArrayNotFlat");
 
             if(!zvaluesArray.isEmpty()) {
+                List<Double> zvalueFlat = null;
+                if(zvaluesArray.get(0) instanceof Collection){
+                    zvalueFlat = ((List<List<?>>)zvaluesArray).stream().flatMap(List::stream).map(z-> z instanceof String ? Double.parseDouble((String) z) : ((Number)z).doubleValue()).collect(Collectors.toList());
+                }else{
+                    zvalueFlat = zvaluesArray.stream().map(z-> z instanceof String ? Double.parseDouble((String) z) : ((Number)z).doubleValue()).collect(Collectors.toList());
+                }
+    //            logger.info("supGeomArray : {}", (((List<?>)supGeomArray.get(0)).get(0)));
+    //            logger.info("zvaluesArrayNotFlat");
+
+
                 if(supGeomArray.get(0) instanceof Collection && !(((List<?>)supGeomArray.get(0)).get(0) instanceof Collection)){
                     // supGeom is List<List<Double>>, a list of points
 //                    final int colSize = ((List<List<?>>)supGeomArray).get(0).size();
@@ -484,7 +491,7 @@ public class EnergymlWorkspaceHelper {
         }catch (Exception e){
             logger.error(e);
         }
-        logger.error(result);
+        logger.debug(result);
 
         return result;
     }

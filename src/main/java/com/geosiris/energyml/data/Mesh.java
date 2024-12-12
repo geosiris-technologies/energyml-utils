@@ -56,7 +56,11 @@ public class Mesh {
 
     public static List<AbstractMesh> readMeshObject(Object energymlObject, EnergymlWorkspace workspace) throws InvocationTargetException, IllegalAccessException {
         if (energymlObject instanceof List) {
-            return (List<AbstractMesh>) energymlObject;
+            List<AbstractMesh> meshes = new ArrayList<>();
+            for(var m: (List<?>) energymlObject){
+                meshes.addAll(readMeshObject(m, workspace));
+            }
+            return meshes;
         }
         String arrayTypeName = meshNameMapping(energymlObject.getClass().getSimpleName());
 
@@ -219,13 +223,14 @@ public class Mesh {
                     for (Long nbNode : nodeCountsList) {
                         pointIndices.add(IntStream.range((int) idx, (int) idx + nbNode.intValue())
                                 .boxed().map(Long::valueOf).collect(Collectors.toList()));
-                        if (closePoly != null && closePoly.size() > polyIdx && closePoly.get(polyIdx) != null) {
+                        if (closePoly != null && closePoly.size() > polyIdx && closePoly.get(polyIdx) != null && ((boolean)closePoly.get(polyIdx))) {
                             pointIndices.get(pointIndices.size() - 1).add(idx);
                         }
                         idx += nbNode;
                         polyIdx++;
                     }
-                } catch (IndexOutOfBoundsException ignore) {
+                } catch (IndexOutOfBoundsException err) {
+                    logger.error(err);
                 }
 
                 if(isZReversed(crs)){

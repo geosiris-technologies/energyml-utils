@@ -21,13 +21,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
+
 public class EPCPackageTest {
     public static Logger logger = LogManager.getLogger(EPCPackage.class);
 
     @Test
     void testPkgInformation() throws EPCPackageInitializationException {
         EPCPackage pkg22 = new EPCPackage("energyml.resqml2_2", "");
-
         assert pkg22.getDomainVersion().compareTo("2.2") == 0;
         assert pkg22.getVersionNum().compareTo("2.2") == 0;
         assert pkg22.getPackagePath().compareTo("energyml.resqml2_2") == 0;
