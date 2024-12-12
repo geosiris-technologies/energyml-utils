@@ -28,6 +28,7 @@ import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,7 +39,7 @@ import static com.geosiris.energyml.utils.Utils.rawArrayToList;
 public class EpcHdf5FileManager implements EnergymlWorkspace {
     public static Logger logger = LogManager.getLogger(EpcHdf5FileManager.class);
 
-    private EPCFile epcFile = null;
+    private final EPCFile epcFile;
 
     private EpcHdf5FileManager(EPCFile epc){
         super();
@@ -127,7 +128,8 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
             Object rootObj,
             EPCFile epc
     ) {
-        if (externalPathObj instanceof String) {
+        logger.debug(externalPathObj + " " + pathInRoot);
+        if (externalPathObj instanceof String && pathInRoot != null) {
             // externalPathObj is maybe an attribute of an ExternalDataArrayPart, now search upper in the object
             String upperPath = pathInRoot.substring(0, pathInRoot.lastIndexOf("."));
             return getHdf5PathFromExternalPath(
@@ -145,6 +147,7 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
         } else {
             List<Object> hdfProxyLst = searchAttributeMatchingName(externalPathObj, "HdfProxy");
             List<Object> extFileProxyLst = searchAttributeMatchingName(externalPathObj, "ExternalFileProxy");
+            List<Object> extDataArrayPart = searchAttributeMatchingName(externalPathObj, "ExternalDataArrayPart");
 
             // resqml 2.0.1
             if (!hdfProxyLst.isEmpty()) {
@@ -175,9 +178,28 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
                 );
                 return getH5PathPossibilities((String) ObjectController.getObjectAttributeValue(extPartRefObj, "Filename"), epc);
             }
+
+            // resqml 2.2
+            if(!extDataArrayPart.isEmpty()){
+                logger.debug(extDataArrayPart);
+                List<String> result = new ArrayList<>();
+                for(var edap: extDataArrayPart){
+                    result.addAll(getHdf5PathFromExternalPath(
+                            edap,
+                            null,
+                            rootObj,
+                            epc
+                    ));
+                }
+                return result;
+            }
+
+            // Nothing found here, try with epc name
+            String epcPath = epc.getFilePath();
+            return List.of(epcPath.substring(0, epcPath.length()-4) + ".h5");
         }
 
-        return null;
+        return new ArrayList<>();
     }
 
     public EPCFile getEpcFile() {
@@ -203,13 +225,13 @@ public class EpcHdf5FileManager implements EnergymlWorkspace {
     public List<?> readExternalArray(Object energyml_array, Object energymlObject, String pathInHDF) throws ObjectNotFoundNotError {
         List<String> h5filePaths;
         try {
-            h5filePaths = getHdf5PathFromExternalPath(energymlObject, null, energymlObject, this.epcFile);
+            h5filePaths = getHdf5PathFromExternalPath(energyml_array, null, energymlObject, this.epcFile);
         }catch (Exception e){
             logger.error(e);
             throw e;
         }
         String pathInExternal = getHdfReference(energyml_array).get(0);
-
+        logger.debug(h5filePaths);
         List<?> resultArray = null;
         assert h5filePaths != null;
         for(String hdf5Path: h5filePaths) {
