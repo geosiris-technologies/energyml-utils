@@ -36,6 +36,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -53,6 +54,9 @@ public class EPCPackageManager {
 
     public final static Pattern PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE = Pattern
             .compile("schemaVersion=\"(?<schemaVersion>[^\"]*)\"", Pattern.CASE_INSENSITIVE);
+
+    public final static Pattern PATTERN_XMLNS_ATTRIBUTE = Pattern
+            .compile("xmlns:(?<prefix>[^=]+)=\"(?<namespace>[^\"]*)\"", Pattern.CASE_INSENSITIVE);
 
     private String xsdCommentsFolderPath;
     private final String accessibleDORFilePath;
@@ -166,26 +170,18 @@ public class EPCPackageManager {
     }
 
     public static Pair<String, String> getNamespaceAndObjVersion(String xmlContent){
-        try {
-            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-            dbFactory.setNamespaceAware(true);
-            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-
-            Document doc = dBuilder.parse(new InputSource(new StringReader(xmlContent)));
-            String version = null;
-            NamedNodeMap nnm = doc.getFirstChild().getAttributes();
-            for(int ai=0; ai < nnm.getLength(); ai++){
-                Node node = nnm.item(ai);
-                if(node.getNodeName().compareToIgnoreCase("schemaVersion") == 0){
-                    version = node.getNodeValue();
-                }
-            }
-            return new Pair<>(doc.getFirstChild().getNamespaceURI(), EPCGenericManager.reformatSchemaVersion(version));
-        } catch (Exception e) {
-            logger.error(e);
-            logger.error(e);
+        String firstLines = xmlContent.substring(0, 300);
+        Matcher nsMatcher = PATTERN_XMLNS_ATTRIBUTE.matcher(firstLines);
+        Matcher schemaVersionMatcher = PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE.matcher(firstLines);
+        String namespace = null;
+        String schemaVersion = null;
+        if (nsMatcher.find()) {
+            namespace = nsMatcher.group("namespace");
         }
-        return null;
+        if (schemaVersionMatcher.find()) {
+            schemaVersion = schemaVersionMatcher.group("schemaVersion");
+        }
+        return new Pair<>(namespace, schemaVersion);
     }
 
     public JAXBElement<?> unmarshal(String xmlContent) {
@@ -215,9 +211,10 @@ public class EPCPackageManager {
 //            }
         }
         // Testing with other package if failed with pkg matching schemaVersion
-        if (nsAndVers != null && nsAndVers.r() != null) {
+        logger.debug("\t\t#===> Testing other packages");
+        // if (nsAndVers != null && nsAndVers.r() != null) {
             for (EPCPackage pkg : PKG_LIST) {
-                if (pkg.getVersionNum().compareToIgnoreCase(nsAndVers.r()) != 0) {
+                // if (pkg.getVersionNum().compareToIgnoreCase(nsAndVers.r()) != 0) {
                     try {
                         JAXBElement<?> obj = pkg.parseXmlContent(xmlContent, true);
                         if (obj != null) {
@@ -225,11 +222,12 @@ public class EPCPackageManager {
                             return obj;
                         }
                     }catch (Exception e){
+                        logger.debug("Failed to unmarshall with pkg " + pkg.getPackageName());
                         logger.debug(e.getMessage(), e);
                     }
-                }
+                // }
             }
-        }
+        // }
         return null;
     }
 

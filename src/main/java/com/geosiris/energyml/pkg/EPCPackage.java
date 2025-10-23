@@ -162,15 +162,7 @@ public class EPCPackage {
 
         logger.debug(">Trying to parse from package '" + this.packagePath);
         
-        // Optimized fix: Only process if obj_ prefix is detected
-        String processedXmlContent = xmlContent;
-        if (xmlContent.substring(0, 100).contains("obj_")) {
-            // Only apply regex replacement if obj_ prefix is found
-            processedXmlContent = xmlContent.replaceAll("(</?[^:]+:)obj_([A-Za-z])", "$1$2");
-            logger.debug("Applied obj_ prefix removal transformation");
-        }
-        
-        JAXBElement<?> result =  parseXmlFromContext(processedXmlContent, true, alternateDevVersionExists, xsdSchema);
+        JAXBElement<?> result =  parseXmlFromContext(xmlContent, true, alternateDevVersionExists, xsdSchema);
         if (result != null) {
             logger.debug("Success reading with '" + this.packagePath + "' object class : "
                     + result.getValue().getClass().getName());
@@ -258,18 +250,38 @@ public class EPCPackage {
                 return result;
             }
         } catch (Exception e) {
-            if(schema != null){
-                logger.debug(e.getCause() + " " + e.getMessage());
-                // try to parse without schema
-                return parseXmlFromContext(xmlContent, tryWithoutNamespaceIfFail, testRemarshalling, null);
-            }
-            logger.debug(e.getMessage(), e);
-            logger.debug("File not read : ");
-            logger.debug(xmlContent.substring(0,500) + " [.....]");
-            if(vec != null){
-                logger.debug("\tRead event [" + vec.getEvents().length + "]");
-                for (ValidationEvent ev : vec.getEvents()) {
-                    logger.debug("event : " + ev);
+            // Optimized fix: Only process if obj_ prefix is detected
+            String firstchars = xmlContent.length() > 100 ? xmlContent.substring(0, 100) : xmlContent;
+
+            if (firstchars.contains(":obj_") || firstchars.contains("<obj_")) {
+                // Only apply regex replacement if obj_ prefix is found
+                logger.debug("First lines : " + firstchars);
+                String processedXmlContent = xmlContent.replaceAll("(<\\s*/?[^:]+:)?obj_([A-Za-z])", "$1$2");
+                logger.debug("After replace : " + processedXmlContent);
+                assert !processedXmlContent.contains(":obj_") && !processedXmlContent.contains("<obj_");
+                logger.debug("Applied obj_ prefix removal transformation");
+                try {
+                    JAXBElement<?> result = parseXmlFromContext(processedXmlContent, tryWithoutNamespaceIfFail, testRemarshalling, schema);
+                    if (result != null) {
+                        logger.debug("Successfully parsed after obj_ prefix removal");
+                        return result;
+                    }
+                } catch (Exception ignore) {}
+                logger.debug("Failed to parse after obj_ prefix removal");
+            }else{
+                if(schema != null){
+                    logger.debug(e.getCause() + " " + e.getMessage());
+                    // try to parse without schema
+                    return parseXmlFromContext(xmlContent, tryWithoutNamespaceIfFail, testRemarshalling, null);
+                }
+                logger.debug(e.getMessage(), e);
+                logger.debug("File not read : ");
+                logger.debug(xmlContent.substring(0,500) + " [.....]");
+                if(vec != null){
+                    logger.debug("\tRead event [" + vec.getEvents().length + "]");
+                    for (ValidationEvent ev : vec.getEvents()) {
+                        logger.debug("event : " + ev);
+                    }
                 }
             }
         }
