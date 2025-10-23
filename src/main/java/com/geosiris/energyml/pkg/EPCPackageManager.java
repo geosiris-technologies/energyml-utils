@@ -194,7 +194,7 @@ public class EPCPackageManager {
             nsAndVers = getNamespaceAndObjVersion(xmlContent);
         }catch (Exception ignore){}
         logger.debug("Ns and version found {}", nsAndVers);
-
+        logger.debug("Pkg list size {}", PKG_LIST.size());
         for (EPCPackage pkg : PKG_LIST) {
             if (nsAndVers == null || nsAndVers.r() == null
                     || (pkg.getVersionNum().contains(nsAndVers.r()) && pkg.matchNamespace(nsAndVers.l()))

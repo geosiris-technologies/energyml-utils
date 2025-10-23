@@ -161,7 +161,16 @@ public class EPCPackage {
         long ticBegin = System.currentTimeMillis();
 
         logger.debug(">Trying to parse from package '" + this.packagePath);
-        JAXBElement<?> result =  parseXmlFromContext(xmlContent, true, alternateDevVersionExists, xsdSchema);
+        
+        // Optimized fix: Only process if obj_ prefix is detected
+        String processedXmlContent = xmlContent;
+        if (xmlContent.substring(0, 100).contains("obj_")) {
+            // Only apply regex replacement if obj_ prefix is found
+            processedXmlContent = xmlContent.replaceAll("(</?[^:]+:)obj_([A-Za-z])", "$1$2");
+            logger.debug("Applied obj_ prefix removal transformation");
+        }
+        
+        JAXBElement<?> result =  parseXmlFromContext(processedXmlContent, true, alternateDevVersionExists, xsdSchema);
         if (result != null) {
             logger.debug("Success reading with '" + this.packagePath + "' object class : "
                     + result.getValue().getClass().getName());
@@ -329,6 +338,7 @@ public class EPCPackage {
             jaxbUnmarshaller.setSchema(xsdSchema);
 
             String xmlObj = marshal(obj);
+            System.out.println(xmlObj);
             ByteArrayInputStream bais = new ByteArrayInputStream(xmlObj.getBytes(StandardCharsets.UTF_8));
 
             jaxbUnmarshaller.unmarshal(bais);
