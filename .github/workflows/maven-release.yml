@@ -21,10 +21,10 @@ jobs:
           distribution: "temurin"
           cache: "maven"
           server-id: central
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
+          server-username: ${{ secrets.CENTRAL_USERNAME }}
+          server-password: ${{ secrets.CENTRAL_PASSWORD }}
           gpg-private-key: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+          gpg-passphrase: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
 
       - name: Set release version
         run: mvn --batch-mode versions:set -DnewVersion="${{ github.event.release.tag_name }}"
@@ -32,12 +32,8 @@ jobs:
       - name: Run tests
         run: mvn --batch-mode test
 
-      - name: Deploy to Maven Central (OSSRH)
+      - name: Deploy to Maven Central
         run: mvn --batch-mode clean deploy -P release -Dchangelist= -Drevision="${{ github.event.release.tag_name }}"
         env:
-          # MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          # MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
