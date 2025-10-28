@@ -35,7 +35,9 @@ jobs:
       - name: Deploy to Maven Central (OSSRH)
         run: mvn --batch-mode clean deploy -P release -Dchangelist= -Drevision="${{ github.event.release.tag_name }}"
         env:
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          # MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          # MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
