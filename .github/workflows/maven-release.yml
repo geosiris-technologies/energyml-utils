@@ -32,24 +32,21 @@ jobs:
           SHA=$(git rev-parse --short HEAD)
 
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            # Tag -> release version
             REVISION="${GITHUB_REF_NAME#v}"
             CHANGE_LIST=""
           elif [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            # Main -> snapshot version
             REVISION="1.0.1"
             CHANGE_LIST="-SNAPSHOT"
           else
-            # Feature or other branch
             REVISION="1.0.1"
             CHANGE_LIST="-dev${GITHUB_RUN_NUMBER}"
           fi
 
           echo "revision=$REVISION" >> $GITHUB_OUTPUT
-          echo "sha1=+$SHA" >> $GITHUB_OUTPUT
+          echo "sha1=-${SHA}" >> $GITHUB_OUTPUT     # <-- FIXED HERE
           echo "changelist=$CHANGE_LIST" >> $GITHUB_OUTPUT
 
-          echo "Resolved version: ${REVISION}${CHANGE_LIST}+${SHA}"
+          echo "Resolved version: ${REVISION}${sha1}${CHANGE_LIST}"
 
       - name: Run tests
         run: |
