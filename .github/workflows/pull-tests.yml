@@ -51,10 +51,11 @@ jobs:
           fi
 
           echo "revision=$REVISION" >> $GITHUB_OUTPUT
-          echo "sha1=+$SHA" >> $GITHUB_OUTPUT
+          # echo "sha1=+$SHA" >> $GITHUB_OUTPUT
           echo "changelist=$CHANGE_LIST" >> $GITHUB_OUTPUT
 
-          echo "Resolved version: ${REVISION}${CHANGE_LIST}+${SHA}"
+          # echo "Resolved version: ${REVISION}${CHANGE_LIST}+${SHA}"
+          echo "Resolved version: ${REVISION}${CHANGE_LIST}"
 
       - name: Unit test
         run: |
