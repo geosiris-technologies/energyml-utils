@@ -183,18 +183,22 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.13</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <skipNexusStagingDeployMojo>true</skipNexusStagingDeployMojo>
-                        </configuration>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.2.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.5.0</version>
+                        <version>3.4.1</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
@@ -203,27 +207,9 @@
                                 </goals>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <!-- use our own just built version -->
-                        <groupId>${project.groupId}</groupId>
-                        <artifactId>${project.artifactId}</artifactId>
-                        <version>${project.version}</version>
-                        <executions>
-                            <execution>
-                                <id>deploy-artifacts</id>
-                                <phase>deploy</phase>
-                                <goals>
-                                    <goal>publish</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <extensions>true</extensions>
                         <configuration>
-                            <publishingServerId>publisher</publishingServerId>
-                            <deploymentName>Central Publishing Maven Plugin - ${project.version}</deploymentName>
-                            <autoPublish>true</autoPublish>
-                            <waitUtil>published</waitUtil>
+                            <doclint>none</doclint>
+                            <!-- to avoid generation fail if javadoc errors in java files -->
                         </configuration>
                     </plugin>
                 </plugins>
