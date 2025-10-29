@@ -107,7 +107,7 @@ public class Utils {
 	/**
 	 * Compute the links between resqml objects
 	 * @param contextObjects all object present in the current workspace
-	 * @return Map<X, List<Y>> where X is an uuid and the list<Y> is a list of uuid of the object that refers to X
+	* @return Map&lt;X, List&lt;Y&gt;&gt; where X is an uuid and the list&lt;Y&gt; is a list of uuid of the object that refers to X
 	 */
 	public static Map<String, List<String>> getRelationShips(Map<String, Object> contextObjects) {
 		Map<String, List<String>> relationships = new HashMap<>();

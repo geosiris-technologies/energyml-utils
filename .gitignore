@@ -174,3 +174,7 @@ yarn-error.log*
 
 # settings files
 settings.xml
+
+
+# others
+manip.md

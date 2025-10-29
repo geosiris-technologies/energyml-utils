@@ -36,17 +36,20 @@
         <url>https://github.com/geosiris-technologies/energyml-utils/issues</url>
     </issueManagement>
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <java.version>11</java.version>
-        <test.dir>${project.basedir}/src/test</test.dir>
-        <sonar.organization>geosiris-technologies</sonar.organization>
-        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <revision>1.0.18</revision>
-        <changelist>-SNAPSHOT</changelist>
-        <sha1/>
-        <nameSuffix/>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+    <maven-gpg-plugin.version>3.0.1</maven-gpg-plugin.version>
+    <central-publishing-maven-plugin.version>0.9.0</central-publishing-maven-plugin.version>
+    <java.version>11</java.version>
+    <test.dir>${project.basedir}/src/test</test.dir>
+    <sonar.organization>geosiris-technologies</sonar.organization>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <revision>1.0.18</revision>
+    <changelist></changelist>
+    <sha1/>
+    <nameSuffix/>
+    <!-- <gpg.keyname/> -->
     </properties>
     <dependencies>
         <dependency>
@@ -136,13 +139,35 @@
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.9.0</version>
+                <version>${central-publishing-maven-plugin.version}</version>
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
                     <waitUntil>published</waitUntil>
                 </configuration>
+            </plugin>
+            <!-- Sign with GPG -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>${maven-gpg-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                            <!-- <keyname>${gpg.keyname}</keyname> -->
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
