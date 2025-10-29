@@ -167,7 +167,7 @@ public class EPCPackage {
             logger.debug("Success reading with '" + this.packagePath + "' object class : "
                     + result.getValue().getClass().getName());
         } else {
-            logger.error("error reading with package " + this.packagePath);  // + " --> " + xmlContent);
+            logger.debug("\terror reading with package " + this.packagePath);  // + " --> " + xmlContent);
         }
 
         long ticEnd = System.currentTimeMillis();

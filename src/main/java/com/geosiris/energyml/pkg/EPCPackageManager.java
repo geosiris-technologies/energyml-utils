@@ -52,7 +52,9 @@ public class EPCPackageManager {
     public final static String DEFAULT_CITATION_FORMAT = "Geosiris WebStudio";
     public final static String DEFAULT_CITATION_ORIGINATOR = "Geosiris user";
 
-    public final static Pattern PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE = Pattern
+    public final static Pattern PATTERN_XML_ROOT_LINE = Pattern
+            .compile("<[^\\?][^>]+>", Pattern.CASE_INSENSITIVE);
+public final static Pattern PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE = Pattern
             .compile("schemaVersion=\"(?<schemaVersion>[^\"]*)\"", Pattern.CASE_INSENSITIVE);
 
     public final static Pattern PATTERN_XMLNS_ATTRIBUTE = Pattern
@@ -170,7 +172,10 @@ public class EPCPackageManager {
     }
 
     public static Pair<String, String> getNamespaceAndObjVersion(String xmlContent){
-        String firstLines = xmlContent.substring(0, 300);
+        // extract first root line with : PATTERN_XML_ROOT_LINE
+        Matcher rootLineMatcher = PATTERN_XML_ROOT_LINE.matcher(xmlContent);
+        String firstLines = rootLineMatcher.find() ? rootLineMatcher.group() : "";
+
         Matcher nsMatcher = PATTERN_XMLNS_ATTRIBUTE.matcher(firstLines);
         Matcher schemaVersionMatcher = PATTERN_XML_SCHEMA_VERSION_ATTRIBUTE.matcher(firstLines);
         String namespace = null;
@@ -181,6 +186,7 @@ public class EPCPackageManager {
         if (schemaVersionMatcher.find()) {
             schemaVersion = schemaVersionMatcher.group("schemaVersion");
         }
+        // logger.info(firstLines);
         return new Pair<>(namespace, schemaVersion);
     }
 
@@ -228,6 +234,9 @@ public class EPCPackageManager {
                 // }
             }
         // }
+        logger.error("Failed to read file " + xmlContent.substring(0, 200));
+        String pkgList = PKG_LIST.stream().map(pkg -> pkg.getPackageName()).collect(Collectors.joining(", "));
+        logger.error("\t Tried packages : " + pkgList);
         return null;
     }
 
