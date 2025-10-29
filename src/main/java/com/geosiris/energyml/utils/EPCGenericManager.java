@@ -237,8 +237,8 @@ public class EPCGenericManager {
     }
 
     /**
-     * Retourne la liste des object qui reference l'uuid passe en parametre
-     * avec des Pairs < ParameterName, Referencer_Object >
+    * Retourne la liste des object qui reference l'uuid passe en parametre
+    * avec des Pairs &lt;ParameterName, Referencer_Object&gt;
      */
     public static List<Pair<String, Object>> getAllReferencersDORParameters(String uuid, Map<String, Object> loadedObjects) {
         List<Pair<String, Object>> result = new ArrayList<>();
@@ -272,9 +272,9 @@ public class EPCGenericManager {
     }
 
     /**
-     * Les relation UP sont celle qui vont du bas vers le haut (e.g. Representation vers Interpretation) et les
-     * DOWN sont dans l'autre sens.
-     * Retourn une hasmap {key = UUID , Value = { relation_UP : [ Pair<paramName, uuid> ], relation_DOWN : [ Pair<paramName, uuid> ] }
+    * Les relation UP sont celle qui vont du bas vers le haut (e.g. Representation vers Interpretation) et les
+    * DOWN sont dans l'autre sens.
+    * Retourn une hasmap {key = UUID , Value = { relation_UP : [ Pair&lt;paramName, uuid&gt; ], relation_DOWN : [ Pair&lt;paramName, uuid&gt; ] }
      */
     public static HashMap<String, Pair<List<Pair<String, String>>, List<Pair<String, String>>>>
     getEpcRelationshipsWithParamName(Map<String, Object> loadedObjects) {
@@ -730,12 +730,12 @@ public class EPCGenericManager {
     }
 
     /**
-     * Reshape a project version to have only specific number of digits. If 0 < nbDigit < 4 then the reshape is done,
-     * else, the original version is returned.
-     * Example : reshapeVersion("v2.0.1", 2) ==> "2.0" and reshapeVersion("version2.0.1.3.2.5", 4) ==> "version2.0.1.3.2.5"
-     * @param version
-     * @param nbDigit
-     * @return
+    * Reshape a project version to have only specific number of digits. If 0 &lt; nbDigit &lt; 4 then the reshape is done,
+    * else, the original version is returned.
+    * Example : reshapeVersion("v2.0.1", 2) ==&gt; "2.0" and reshapeVersion("version2.0.1.3.2.5", 4) ==&gt; "version2.0.1.3.2.5"
+    * @param version
+    * @param nbDigit
+    * @return
      */
     public static String reshapeVersion(String version, int nbDigit){
         Matcher m = PATTERN_PROJECT_VERSION.matcher(version);

@@ -24,16 +24,13 @@ jobs:
           server-username: CI_DEPLOY_USERNAME
           server-password: CI_DEPLOY_PASSWORD
           gpg-private-key: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
-          gpg-passphrase: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
-
-      - name: Set release version
-        run: mvn --batch-mode versions:set -DnewVersion="${{ github.event.release.tag_name }}"
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Run tests
         run: mvn --batch-mode test
 
       - name: Deploy to Maven Central
-        run: mvn --batch-mode clean deploy -P release -Dchangelist= -Drevision="${{ github.event.release.tag_name }}"
+        run: mvn --batch-mode clean deploy -P release -Dchangelist= "-Drevision=${{ github.event.release.tag_name }}"
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
