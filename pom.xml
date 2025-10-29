@@ -45,7 +45,7 @@
     <test.dir>${project.basedir}/src/test</test.dir>
     <sonar.organization>geosiris-technologies</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-    <revision>1.0.18</revision>
+    <revision/> <!-- empty to avoid gpg errors while uploading. If a default value is set, it seems not tanking the one given in parameter of the mvn command -->
     <changelist></changelist>
     <sha1/>
     <nameSuffix/>

@@ -29,14 +29,46 @@ jobs:
           gpg-private-key: ${{ secrets.OSSRH_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
+      - name: Compute Maven version
+        id: version
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            # Tag -> release version
+            REVISION="${GITHUB_REF_NAME#v}"
+            CHANGE_LIST=""
+          elif [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            # Main -> snapshot version
+            REVISION="1.0.1"
+            CHANGE_LIST="-SNAPSHOT"
+          else
+            # Feature or other branch
+            REVISION="1.0.1"
+            CHANGE_LIST="-dev${GITHUB_RUN_NUMBER}"
+          fi
+
+          echo "revision=$REVISION" >> $GITHUB_OUTPUT
+          echo "sha1=+$SHA" >> $GITHUB_OUTPUT
+          echo "changelist=$CHANGE_LIST" >> $GITHUB_OUTPUT
+
+          echo "Resolved version: ${REVISION}${CHANGE_LIST}+${SHA}"
+
       - name: Unit test
         run: |
           PROJECT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "jar_version=${PROJECT_VERSION}" >> $GITHUB_OUTPUT
-          mvn -B --file pom.xml clean test -P test
+          mvn -B --file pom.xml clean test -P test\
+          -Drevision=${{ steps.version.outputs.revision }} \
+          -Dsha1=${{ steps.version.outputs.sha1 }} \
+          -Dchangelist=${{ steps.version.outputs.changelist }}
 
       - name: Build with Maven
-        run: mvn -B --file pom.xml clean deploy -P release "-Dsha1=${{ github.sha }}" "-Dchangelist=-SNAPSHOT" -Dgpg.keyname="${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}" -Dgpg.keyname="${{ secrets.OSSRH_GPG_KEY_ID }}"
+        run:
+          mvn --batch-mode clean deploy -P release -Dchangelist= "-Drevision=${{ steps.version.outputs.version }}" -Dgpg.keyname="${{ secrets.OSSRH_GPG_KEY_ID }}"\
+          -Drevision=${{ steps.version.outputs.revision }} \
+          -Dsha1=${{ steps.version.outputs.sha1 }} \
+          -Dchangelist=${{ steps.version.outputs.changelist }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CI_DEPLOY_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
