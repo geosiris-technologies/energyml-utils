@@ -27,30 +27,40 @@ jobs:
           gpg-private-key: ${{ secrets.OSSRH_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
-      - name: Compute Maven version
-        id: version
+      - name: Determine Maven Version Components
+        id: version # to identify the output
         run: |
-          SHA=$(git rev-parse --short HEAD)
+          COMMIT_SHA_LONG="${{ github.sha }}"
+          COMMIT_SHA_SHORT="${COMMIT_SHA_LONG:0:7}"
 
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            # Tag -> release version
-            REVISION="${GITHUB_REF_NAME#v}"
-            CHANGE_LIST=""
-          elif [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            # Main -> snapshot version
-            REVISION="1.0.1"
-            CHANGE_LIST="-SNAPSHOT"
+          REVISION_VAR=""
+          SHA1_VAR=""
+          CHANGELIST_VAR=""
+
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+              TAG_NAME="${{ github.ref_name }}"
+              TAG_CLEAN=$(echo "$TAG_NAME" | sed 's/^v//')
+
+              REVISION_VAR="$TAG_CLEAN"
+              SHA1_VAR=""
+              CHANGELIST_VAR=""
+              echo "🏗️ Version de Release (Tag) détectée : $TAG_CLEAN"
           else
-            # Feature or other branch
-            REVISION="1.0.1"
-            CHANGE_LIST="-dev${GITHUB_RUN_NUMBER}"
+              LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0") 
+              VERSION_BASE=$(echo "$LAST_TAG" | sed 's/^v//')
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_BASE"
+              NEXT_PATCH=$((PATCH + 1))
+              
+              REVISION_VAR="$MAJOR.$MINOR.$NEXT_PATCH"
+              SHA1_VAR="-$COMMIT_SHA_SHORT" 
+              CHANGELIST_VAR="-SNAPSHOT"
+              echo "🧪 Version Snapshot détectée (basée sur $LAST_TAG) : ${REVISION_VAR}${SHA1_VAR}${CHANGELIST_VAR}"
           fi
 
-          echo "revision=$REVISION" >> $GITHUB_OUTPUT
-          echo "sha1=+$SHA" >> $GITHUB_OUTPUT
-          echo "changelist=$CHANGE_LIST" >> $GITHUB_OUTPUT
-
-          echo "Resolved version: ${REVISION}${CHANGE_LIST}+${SHA}"
+          echo "revision=$REVISION_VAR" >> "$GITHUB_OUTPUT"
+          echo "sha1=$SHA1_VAR" >> "$GITHUB_OUTPUT"
+          echo "changelist=$CHANGELIST_VAR" >> "$GITHUB_OUTPUT"
+          echo "➡️ Variables de sortie définies : revision='$REVISION_VAR', sha1='$SHA1_VAR', changelist='$CHANGELIST_VAR'"
 
       - name: Run tests
         run: |
