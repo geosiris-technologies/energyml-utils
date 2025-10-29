@@ -52,14 +52,17 @@ jobs:
           echo "Resolved version: ${REVISION}${CHANGE_LIST}+${SHA}"
 
       - name: Run tests
-        run: mvn --batch-mode test
+        run: mvn --batch-mode test \
+          "-Drevision=${{ steps.version.outputs.revision }}" \
+          "-Dsha1=${{ steps.version.outputs.sha1 }}" \
+          "-Dchangelist=${{ steps.version.outputs.changelist }}"
 
       - name: Deploy to Maven Central
         run:
-          mvn --batch-mode clean deploy -P release -Dchangelist= "-Drevision=${{ steps.version.outputs.version }}" -Dgpg.keyname="${{ secrets.OSSRH_GPG_KEY_ID }}"\
-          -Drevision=${{ steps.version.outputs.revision }} \
-          -Dsha1=${{ steps.version.outputs.sha1 }} \
-          -Dchangelist=${{ steps.version.outputs.changelist }}
+          mvn --batch-mode clean deploy -P release -Dchangelist= "-Drevision=${{ steps.version.outputs.version }}" -Dgpg.keyname="${{ secrets.OSSRH_GPG_KEY_ID }}" \
+          "-Drevision=${{ steps.version.outputs.revision }}" \
+          "-Dsha1=${{ steps.version.outputs.sha1 }}" \
+          "-Dchangelist=${{ steps.version.outputs.changelist }}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CI_DEPLOY_USERNAME: ${{ secrets.CENTRAL_USERNAME }}

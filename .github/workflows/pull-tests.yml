@@ -58,17 +58,17 @@ jobs:
         run: |
           PROJECT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "jar_version=${PROJECT_VERSION}" >> $GITHUB_OUTPUT
-          mvn -B --file pom.xml clean test -P test\
-          -Drevision=${{ steps.version.outputs.revision }} \
-          -Dsha1=${{ steps.version.outputs.sha1 }} \
-          -Dchangelist=${{ steps.version.outputs.changelist }}
+          mvn -B --file pom.xml clean test -P test \
+            "-Drevision=${{ steps.version.outputs.revision }}" \
+            "-Dsha1=${{ steps.version.outputs.sha1 }}" \
+            "-Dchangelist=${{ steps.version.outputs.changelist }}"
 
       - name: Build with Maven
         run:
-          mvn --batch-mode clean deploy -P release -Dchangelist= "-Drevision=${{ steps.version.outputs.version }}" -Dgpg.keyname="${{ secrets.OSSRH_GPG_KEY_ID }}"\
-          -Drevision=${{ steps.version.outputs.revision }} \
-          -Dsha1=${{ steps.version.outputs.sha1 }} \
-          -Dchangelist=${{ steps.version.outputs.changelist }}
+          mvn --batch-mode clean deploy -P release -Dchangelist= "-Drevision=${{ steps.version.outputs.version }}" -Dgpg.keyname="${{ secrets.OSSRH_GPG_KEY_ID }}" \
+          "-Drevision=${{ steps.version.outputs.revision }}" \
+          "-Dsha1=${{ steps.version.outputs.sha1 }}" \
+          "-Dchangelist=${{ steps.version.outputs.changelist }}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CI_DEPLOY_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
