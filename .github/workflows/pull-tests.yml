@@ -40,22 +40,24 @@ jobs:
             # Tag -> release version
             REVISION="${GITHUB_REF_NAME#v}"
             CHANGE_LIST=""
+            SHA=""
           elif [[ "${GITHUB_REF_NAME}" == "main" ]]; then
             # Main -> snapshot version
-            REVISION="1.0.1"
+            REVISION="${GITHUB_REF_NAME#v}"
             CHANGE_LIST="-SNAPSHOT"
+            SHA=".dev${GITHUB_RUN_NUMBER}"
           else
             # Feature or other branch
-            REVISION="1.0.1"
-            CHANGE_LIST="-dev${GITHUB_RUN_NUMBER}"
+            REVISION="${GITHUB_REF_NAME#v}"
+            CHANGE_LIST=""
           fi
 
           echo "revision=$REVISION" >> $GITHUB_OUTPUT
-          # echo "sha1=+$SHA" >> $GITHUB_OUTPUT
+          echo "sha1=+$SHA" >> $GITHUB_OUTPUT
           echo "changelist=$CHANGE_LIST" >> $GITHUB_OUTPUT
 
-          # echo "Resolved version: ${REVISION}${CHANGE_LIST}+${SHA}"
-          echo "Resolved version: ${REVISION}${CHANGE_LIST}"
+          echo "Resolved version: ${REVISION}+${SHA}${CHANGE_LIST}"
+          # echo "Resolved version: ${REVISION}${CHANGE_LIST}"
 
       - name: Unit test
         run: |
