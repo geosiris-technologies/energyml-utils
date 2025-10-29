@@ -171,3 +171,6 @@ yarn-error.log*
 *.backup
 *.old
 *.orig
+
+# settings files
+settings.xml
