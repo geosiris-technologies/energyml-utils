@@ -39,16 +39,17 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
-    <maven-gpg-plugin.version>3.0.1</maven-gpg-plugin.version>
+    <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
     <central-publishing-maven-plugin.version>0.9.0</central-publishing-maven-plugin.version>
     <java.version>11</java.version>
     <test.dir>${project.basedir}/src/test</test.dir>
     <sonar.organization>geosiris-technologies</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-    <revision/> <!-- empty to avoid gpg errors while uploading. If a default value is set, it seems not tanking the one given in parameter of the mvn command -->
-    <changelist></changelist>
+    <!-- empty to avoid gpg errors while uploading. If a default value is set, it seems not tanking the one given in parameter of the mvn command -->
+    <revision>0.0.0</revision> 
+    <!-- <revision/>  -->
+    <changelist/>
     <sha1/>
-    <nameSuffix/>
     <!-- <gpg.keyname/> -->
     </properties>
     <dependencies>
@@ -135,6 +136,31 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.6.0</version> 
+                <configuration>
+                    <updatePomFile>true</updatePomFile> 
+                    <flattenMode>oss</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- Sonatype Central Publishing -->
             <plugin>
                 <groupId>org.sonatype.central</groupId>
@@ -145,6 +171,7 @@
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
                     <waitUntil>published</waitUntil>
+                    <pomFile>${project.build.directory}/flattened-pom.xml</pomFile>
                 </configuration>
             </plugin>
             <!-- Sign with GPG -->
@@ -164,7 +191,7 @@
                                 <arg>--pinentry-mode</arg>
                                 <arg>loopback</arg>
                             </gpgArguments>
-                            <!-- <keyname>${gpg.keyname}</keyname> -->
+                            <keyname>${gpg.keyname}</keyname>
                         </configuration>
                     </execution>
                 </executions>

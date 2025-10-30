@@ -75,7 +75,8 @@ jobs:
 
       - name: Build with Maven
         run: |
-          mvn --batch-mode deploy -P release -Dchangelist= "-Drevision=${{ steps.version.outputs.version }}" -Dgpg.keyname="${{ secrets.OSSRH_GPG_KEY_ID }}" \
+          mvn --batch-mode deploy -P release \
+          -Dgpg.keyname="${{ secrets.OSSRH_GPG_KEY_ID }}" \
           "-Drevision=${{ steps.version.outputs.revision }}" \
           "-Dsha1=${{ steps.version.outputs.sha1 }}" \
           "-Dchangelist=${{ steps.version.outputs.changelist }}"
