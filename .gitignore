@@ -178,3 +178,5 @@ settings.xml
 
 # others
 manip.md
+.flattened-pom.xml
+.mvn/
