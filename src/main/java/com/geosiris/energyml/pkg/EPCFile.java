@@ -22,6 +22,7 @@ import energyml.content_types.Types;
 import energyml.core_properties.CoreProperties;
 import energyml.relationships.Relationship;
 import energyml.relationships.Relationships;
+import energyml.relationships.TargetMode;
 import jakarta.xml.bind.JAXBException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,11 +40,12 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-public class EPCFile implements EnergymlWorkspace{
+public class EPCFile implements EnergymlWorkspace {
     public static Logger logger = LogManager.getLogger(EPCFile.class);
 
     /**
-     * Energyml files mapped by <Identifier>. The different versions of the object identified by the identifier (see. @getIdentifier) are stored in a list.
+     * Energyml files mapped by <Identifier>. The different versions of the object
+     * identified by the identifier (see. @getIdentifier) are stored in a list.
      */
     Map<String, Object> energymlObjects;
 
@@ -51,7 +53,7 @@ public class EPCFile implements EnergymlWorkspace{
     Map<Object, List<Relationship>> additionalRels;
 
     // Key is (Uuid;ObjectVersion)
-//    Map<Pair<String, String>, List<Relationship>> readRels;
+    // Map<Pair<String, String>, List<Relationship>> readRels;
 
     ExportVersion version;
     CoreProperties coreProperties;
@@ -59,7 +61,9 @@ public class EPCFile implements EnergymlWorkspace{
 
     String filePath;
 
-    public EPCFile(EPCPackageManager pkgManager, ExportVersion version, CoreProperties coreProperties, Map<String, Object> energymlObjects, Map<String, InputStream> otherFiles, Map<Object, List<Relationship>> additionalRels ) {
+    public EPCFile(EPCPackageManager pkgManager, ExportVersion version, CoreProperties coreProperties,
+            Map<String, Object> energymlObjects, Map<String, InputStream> otherFiles,
+            Map<Object, List<Relationship>> additionalRels) {
         this.energymlObjects = energymlObjects;
         this.otherFiles = otherFiles;
         this.additionalRels = additionalRels;
@@ -69,20 +73,20 @@ public class EPCFile implements EnergymlWorkspace{
         this.filePath = null;
     }
 
-    public EPCFile(EPCPackageManager pkgManager, ExportVersion version, CoreProperties coreProperties){
+    public EPCFile(EPCPackageManager pkgManager, ExportVersion version, CoreProperties coreProperties) {
         this(pkgManager, version, coreProperties, new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
 
-    public EPCFile(EPCPackageManager pkgManager, ExportVersion version){
+    public EPCFile(EPCPackageManager pkgManager, ExportVersion version) {
         this(pkgManager, version, new CoreProperties());
     }
 
-    public EPCFile(EPCPackageManager pkgManager, String filePath){
+    public EPCFile(EPCPackageManager pkgManager, String filePath) {
         this(pkgManager);
         this.filePath = filePath;
     }
 
-    public EPCFile(EPCPackageManager pkgManager){
+    public EPCFile(EPCPackageManager pkgManager) {
         this(pkgManager, ExportVersion.EXPANDED);
         coreProperties.setVersion("1.0");
         SimpleLiteral sl_creator = new SimpleLiteral();
@@ -91,9 +95,9 @@ public class EPCFile implements EnergymlWorkspace{
     }
 
     public void export(OutputStream os) throws IOException {
-        try(ZipOutputStream zos = new ZipOutputStream(os)){
+        try (ZipOutputStream zos = new ZipOutputStream(os)) {
             // Non energyml entries :
-            for(Map.Entry<String, InputStream> e : otherFiles.entrySet()){
+            for (Map.Entry<String, InputStream> e : otherFiles.entrySet()) {
                 ZipEntry zipEntry = new ZipEntry(e.getKey());
                 zos.putNextEntry(zipEntry);
                 e.getValue().transferTo(zos);
@@ -122,26 +126,30 @@ public class EPCFile implements EnergymlWorkspace{
             zos.closeEntry();
 
             // Energyml Objects
-            for(String identifier : energymlObjects.keySet()){
+            for (String identifier : energymlObjects.keySet()) {
                 List<Object> toImport = new ArrayList<>();
-                if(this.version == ExportVersion.CLASSIC){
+                if (this.version == ExportVersion.CLASSIC) {
                     // Only import the last version
                     toImport.add(getLastModifiedObject(identifier));
-                }else{
+                } else {
                     toImport.add(energymlObjects.get(identifier));
                 }
 
-                for(Object o : toImport){
-                    String pathInEPC = EPCGenericManager.genPathInEPC(o, this.version);
-                    ZipEntry ze_obj = new ZipEntry(pathInEPC);
-                    zos.putNextEntry(ze_obj);
-                    this.pkgManager.marshal(o, zos);
-                    zos.closeEntry();
+                for (Object o : toImport) {
+                    if (o == null) {
+                        logger.error("Null object found for identifier " + identifier);
+                    } else {
+                        String pathInEPC = EPCGenericManager.genPathInEPC(o, this.version);
+                        ZipEntry ze_obj = new ZipEntry(pathInEPC);
+                        zos.putNextEntry(ze_obj);
+                        this.pkgManager.marshal(o, zos);
+                        zos.closeEntry();
 
-                    Override overrideObjContentType = new Override();
-                    overrideObjContentType.setContentType(EPCGenericManager.getObjectContentType(o, true));
-                    overrideObjContentType.setPartName("/" + pathInEPC); // '/' at start is mandatory for ResqmlCAD
-                    contentTypeFile.getDefaultOrOverride().add(overrideObjContentType);
+                        Override overrideObjContentType = new Override();
+                        overrideObjContentType.setContentType(EPCGenericManager.getObjectContentType(o, true));
+                        overrideObjContentType.setPartName("/" + pathInEPC); // '/' at start is mandatory for ResqmlCAD
+                        contentTypeFile.getDefaultOrOverride().add(overrideObjContentType);
+                    }
                 }
             }
 
@@ -152,7 +160,7 @@ public class EPCFile implements EnergymlWorkspace{
             contentTypeFile.getDefaultOrOverride().add(relsDefaultCT);
 
             Map<Object, Relationships> relsList = computeRelations();
-            for(Map.Entry<Object, Relationships> rels: relsList.entrySet()){
+            for (Map.Entry<Object, Relationships> rels : relsList.entrySet()) {
                 String pathInEPC = OPCRelsPackage.genRelsPathInEPC(rels.getKey(), this.version);
                 ZipEntry ze_objRels = new ZipEntry(pathInEPC);
                 zos.putNextEntry(ze_objRels);
@@ -167,7 +175,8 @@ public class EPCFile implements EnergymlWorkspace{
             root_core_rel.setType(EPCRelsRelationshipType.ExtendedCoreProperties.getType());
             rootRels.getRelationship().add(root_core_rel);
 
-            ZipEntry ze_rootRels = new ZipEntry(OPCRelsPackage.genRelsFolderPath(this.version) + "/." + OPCRelsPackage.getRelsExtension());
+            ZipEntry ze_rootRels = new ZipEntry(
+                    OPCRelsPackage.genRelsFolderPath(this.version) + "/." + OPCRelsPackage.getRelsExtension());
             zos.putNextEntry(ze_rootRels);
             EPCGenericManager.marshal(OPCRelsPackage.JAXB_CONTEXT, null, rootRels, zos);
             zos.closeEntry();
@@ -179,7 +188,7 @@ public class EPCFile implements EnergymlWorkspace{
             zos.closeEntry();
 
             // Other files
-            for(Map.Entry<String, InputStream> otherFile: otherFiles.entrySet()){
+            for (Map.Entry<String, InputStream> otherFile : otherFiles.entrySet()) {
                 ZipEntry ze_otherFile = new ZipEntry(otherFile.getKey());
                 zos.putNextEntry(ze_otherFile);
                 otherFile.getValue().transferTo(zos);
@@ -188,12 +197,16 @@ public class EPCFile implements EnergymlWorkspace{
         }
     }
 
-    public Object getLastModifiedObject(String uuid){
+    public Object getLastModifiedObject(String identifier) {
+        final String uuid = getUuidFromIdentifier(identifier);
+
         List<Object> objects = energymlObjects.entrySet().stream()
                 .filter(e -> uuid.equals(getUuidFromIdentifier(e.getKey())))
                 .sorted((a, b) -> {
-                    XMLGregorianCalendar a_lastModif = (XMLGregorianCalendar) ObjectController.getObjectAttributeValue(a, "Citation.LastUpdate");
-                    XMLGregorianCalendar b_lastModif = (XMLGregorianCalendar) ObjectController.getObjectAttributeValue(b, "Citation.LastUpdate");
+                    XMLGregorianCalendar a_lastModif = (XMLGregorianCalendar) ObjectController
+                            .getObjectAttributeValue(a.getValue(), "Citation.LastUpdate");
+                    XMLGregorianCalendar b_lastModif = (XMLGregorianCalendar) ObjectController
+                            .getObjectAttributeValue(b.getValue(), "Citation.LastUpdate");
                     if (a_lastModif == null) {
                         return 1;
                     } else if (b_lastModif == null) {
@@ -201,21 +214,21 @@ public class EPCFile implements EnergymlWorkspace{
                     } else {
                         return b_lastModif.compare(a_lastModif);
                     }
-                }).collect(Collectors.toList());
-        if(objects.size() > 0){
+                }).map(Map.Entry::getValue).collect(Collectors.toList());
+        if (!objects.isEmpty()) {
             return objects.get(0);
         }
         return null;
     }
 
-    public Object getObject(String uuid, String objectVersion){
+    public Object getObject(String uuid, String objectVersion) {
         String identifier = getIdentifier(uuid, objectVersion);
         return getObjectByIdentifier(identifier);
     }
 
     @java.lang.Override
     public Object getObjectByIdentifier(String identifier) {
-        if(energymlObjects.containsKey(identifier)){
+        if (energymlObjects.containsKey(identifier)) {
             return energymlObjects.get(identifier);
         }
         return null;
@@ -231,78 +244,131 @@ public class EPCFile implements EnergymlWorkspace{
         return List.of();
     }
 
-    public List<String> getAllVersions(String uuid){
+    public List<String> getAllVersions(String uuid) {
         return energymlObjects.keySet().stream()
-            .filter(o -> uuid.equals(getUuidFromIdentifier(o)))
+                .filter(o -> uuid.equals(getUuidFromIdentifier(o)))
                 .map(EPCFile::getObjVersionFromIdentifier)
                 .collect(Collectors.toList());
     }
 
-    public Map<Object, Relationships> computeRelations(){
+    public Map<Object, Relationships> computeRelations() {
         Map<Object, Relationships> relations = new HashMap<>();
 
         Map<Object, List<Object>> sourceRels = new HashMap<>();
         Map<Object, List<Object>> destRels = new HashMap<>();
 
-        for(Object o: this.energymlObjects.values()){
+        for (Object o : this.energymlObjects.values()) {
             destRels.put(o, ObjectController.findSubObjects(o, "DataObjectReference", true).stream()
                     .map(obj -> {
-                        try{
+                        try {
                             Object rel = getObjectByIdentifier(getIdentifier(obj));
-                            if(!sourceRels.containsKey(rel)){
+                            if (!sourceRels.containsKey(rel)) {
                                 sourceRels.put(rel, new ArrayList<>());
                             }
                             sourceRels.get(rel).add(o);
                             return rel;
-                        }catch (Exception ignore){}
+                        } catch (Exception ignore) {
+                        }
                         return null;
                     }).filter(Objects::nonNull)
                     .collect(Collectors.toList()));
         }
 
-        for(Object o: this.energymlObjects.values()){
+        for (Object o : this.energymlObjects.values()) {
             Path o_parentFolder = Paths.get(EPCGenericManager.genPathInEPC(o, version)).getParent();
             Relationships rels = new Relationships();
             relations.put(o, rels);
-            if (sourceRels.containsKey(o)){
-                for(Object source: new HashSet<>(sourceRels.get(o))){
+            if (sourceRels.containsKey(o)) {
+                for (Object source : new HashSet<>(sourceRels.get(o))) {
                     String s_uuid = getUuid(source);
                     String s_objVersion = getObjectVersion(source);
                     Relationship rel = new Relationship();
-                    rel.setType(EPCRelsRelationshipType.SourceObject.getType());
-                    rel.setId(URLEncoder.encode(s_uuid + (s_objVersion!= null ? "_" + s_objVersion : ""), Charset.defaultCharset()));
-                    if(o_parentFolder != null) {
-                        rel.setTarget(o_parentFolder.relativize(Paths.get(EPCGenericManager.genPathInEPC(source, version))).toString());
-                    }else{
+                    rel.setType(getRelType(o, false));
+                    // rel.setType(EPCRelsRelationshipType.SourceObject.getType());
+                    rel.setId(URLEncoder.encode(s_uuid + (s_objVersion != null ? "_" + s_objVersion : ""),
+                            Charset.defaultCharset()));
+                    if (o_parentFolder != null) {
+                        rel.setTarget(o_parentFolder
+                                .relativize(Paths.get(EPCGenericManager.genPathInEPC(source, version))).toString());
+                    } else {
                         rel.setTarget(EPCGenericManager.genPathInEPC(source, version));
                     }
                     rels.getRelationship().add(rel);
                 }
             }
 
-            if (destRels.containsKey(o)){
-                for(Object dest: new HashSet<>(destRels.get(o))){
+            if (destRels.containsKey(o)) {
+                for (Object dest : new HashSet<>(destRels.get(o))) {
                     String s_uuid = getUuid(dest);
                     String s_objVersion = getObjectVersion(dest);
                     Relationship rel = new Relationship();
-                    rel.setType(EPCRelsRelationshipType.DestinationObject.getType());
-                    rel.setId(URLEncoder.encode(s_uuid + (s_objVersion!= null ? "_" + s_objVersion : ""), Charset.defaultCharset()));
-                    if(o_parentFolder != null) {
-                        rel.setTarget(o_parentFolder.relativize(Paths.get(EPCGenericManager.genPathInEPC(dest, version))).toString());
-                    }else{
+                    rel.setType(getRelType(dest, true));
+                    // rel.setType(EPCRelsRelationshipType.DestinationObject.getType());
+                    rel.setId(URLEncoder.encode(s_uuid + (s_objVersion != null ? "_" + s_objVersion : ""),
+                            Charset.defaultCharset()));
+                    if (o_parentFolder != null) {
+                        rel.setTarget(o_parentFolder
+                                .relativize(Paths.get(EPCGenericManager.genPathInEPC(dest, version))).toString());
+                    } else {
                         rel.setTarget(EPCGenericManager.genPathInEPC(dest, version));
                     }
                     rels.getRelationship().add(rel);
                 }
             }
             String oId = getIdentifier(o);
-            if (additionalRels.containsKey(oId)){
-                for(Relationship r: additionalRels.get(oId)){
+            if (additionalRels.containsKey(oId)) {
+                for (Relationship r : additionalRels.get(oId)) {
                     rels.getRelationship().add(r);
                 }
             }
+
+            // remove duplicated that has the same target and type
+            List<Relationship> uniqueRels = rels.getRelationship().stream()
+                    .collect(Collectors.toMap(
+                            r -> r.getTarget() + "|" + r.getType(),
+                            r -> r,
+                            (r1, r2) -> r1))
+                    .values().stream()
+                    .collect(Collectors.toList());
+
+            // force TargetMode to External for externalResource
+            for(Relationship r: uniqueRels){
+                if(r.getType().equals(EPCRelsRelationshipType.ExternalResource.getType())){
+                    r.setTargetMode(TargetMode.EXTERNAL);
+                }
+            }
+            rels.getRelationship().clear();
+            rels.getRelationship().addAll(uniqueRels);
         }
         return relations;
+    }
+
+    public static boolean isProxyObjectType(Object o) {
+        if (o instanceof String) {
+            // try to match ExternalPar
+            String o_lw = ((String) o).toLowerCase();
+            return o_lw.contains("external") && o_lw.contains("reference");
+        } else {
+            return isProxyObjectType(o.getClass().getSimpleName());
+        }
+    }
+
+    public static String getRelType(Object referred_in_dor, Boolean rel_of_referer) {
+        if (rel_of_referer) {
+            // This rels is written in the referer object (the one which contains the dor)
+            if (isProxyObjectType(referred_in_dor)) {
+                return EPCRelsRelationshipType.MlToExternalPartProxy.getType();
+            } else {
+                return EPCRelsRelationshipType.DestinationObject.getType();
+            }
+        } else {
+            // This rels is written in the referred object (the DOR target)
+            if (isProxyObjectType(referred_in_dor)) {
+                return EPCRelsRelationshipType.ExternalPartProxyToMl.getType();
+            } else {
+                return EPCRelsRelationshipType.SourceObject.getType();
+            }
+        }
     }
 
     public static EPCFile read(String filePath, EPCPackageManager pkgManager) throws FileNotFoundException {
@@ -311,7 +377,7 @@ public class EPCFile implements EnergymlWorkspace{
         return file;
     }
 
-    public static EPCFile read(InputStream input, EPCPackageManager pkgManager){
+    public static EPCFile read(InputStream input, EPCPackageManager pkgManager) {
         EPCFile epc = new EPCFile(pkgManager);
         byte[] buffer = new byte[2048];
 
@@ -319,10 +385,10 @@ public class EPCFile implements EnergymlWorkspace{
         Map<String, Relationships> mapPathToRelationships = new HashMap<>();
         boolean foundNamespaceFolder = false;
 
-        try(ZipInputStream zip = new ZipInputStream(input)){
+        try (ZipInputStream zip = new ZipInputStream(input)) {
             String corePath = OPCCorePackage.genCorePath();
             ZipEntry entry = null;
-            while ((entry = zip.getNextEntry()) != null){
+            while ((entry = zip.getNextEntry()) != null) {
                 ByteArrayOutputStream entryBOS = new ByteArrayOutputStream();
                 int len;
                 while ((len = zip.read(buffer)) > 0) {
@@ -330,27 +396,34 @@ public class EPCFile implements EnergymlWorkspace{
                 }
 
                 // Other files
-                if(!entry.isDirectory() ) {
+                if (!entry.isDirectory()) {
                     logger.debug("Reading " + entry.getName());
                     if (corePath.compareToIgnoreCase(entry.getName()) == 0) {
-                        epc.coreProperties = (CoreProperties) OPCCorePackage.unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
-                    }else if (entry.getName().compareToIgnoreCase(OPCContentType.genContentTypePath()) == 0) {
-                        // contentTypes = (Types) OPCContentType.unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
-                    }else if (entry.getName().endsWith(".xml")){
-                        try{
+                        epc.coreProperties = (CoreProperties) OPCCorePackage
+                                .unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
+                    } else if (entry.getName().compareToIgnoreCase(OPCContentType.genContentTypePath()) == 0) {
+                        // contentTypes = (Types) OPCContentType.unmarshal(new
+                        // ByteArrayInputStream(entryBOS.toByteArray()));
+                    } else if (entry.getName().endsWith(".xml")) {
+                        try {
                             Object o = pkgManager.unmarshal(entryBOS.toByteArray()).getValue();
                             String identifier = getIdentifier(o);
-                            if(epc.energymlObjects.containsKey(identifier)){
+                            if (epc.energymlObjects.containsKey(identifier)) {
                                 logger.debug("Duplicate object found for identifier {}", identifier);
                             }
                             epc.energymlObjects.put(identifier, o);
                             mapPathToObject.put(entry.getName(), o);
-                            if(entry.getName().toLowerCase().startsWith("namespace_")){
+                            if (entry.getName().toLowerCase().startsWith("namespace_")) {
                                 foundNamespaceFolder = true;
                             }
-                        }catch (Exception e){logger.error("Error for {}: {}", entry.getName(), e);logger.error(e);};
-                    }else if (entry.getName().endsWith("." + OPCRelsPackage.getRelsExtension())){
-                        Relationships rels = (Relationships) OPCRelsPackage.unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
+                        } catch (Exception e) {
+                            logger.error("Error for {}: {}", entry.getName(), e);
+                            logger.error(e);
+                        }
+                        ;
+                    } else if (entry.getName().endsWith("." + OPCRelsPackage.getRelsExtension())) {
+                        Relationships rels = (Relationships) OPCRelsPackage
+                                .unmarshal(new ByteArrayInputStream(entryBOS.toByteArray()));
                         String objPath = entry.getName()
                                 .substring(0, entry.getName().lastIndexOf(".")) // removing rels extension
                                 .replace(OPCRelsPackage.genRelsFolderPath(epc.version) + "/", "")
@@ -363,31 +436,41 @@ public class EPCFile implements EnergymlWorkspace{
             throw new RuntimeException(e);
         }
 
-        for(Map.Entry<String, Relationships> rels: mapPathToRelationships.entrySet()) {
-            if (mapPathToObject.containsKey(rels.getKey())){
+        for (Map.Entry<String, Relationships> rels : mapPathToRelationships.entrySet()) {
+            if (mapPathToObject.containsKey(rels.getKey())) {
                 Object target = mapPathToObject.get(rels.getKey());
                 String targId = getIdentifier(target);
 
-                Pair<String, String> obj_pair = new Pair<>((String) ObjectController.getObjectAttributeValue(target, "uuid"),
-                        getObjectVersion(target));
-//                if(!epc.readRels.containsKey(obj_pair)){
-//                    epc.readRels.put(obj_pair, new ArrayList<>());
-//                }
-//                epc.readRels.get(obj_pair).addAll(rels.getValue().getRelationship());
+                // Pair<String, String> obj_pair = new Pair<>(
+                // (String) ObjectController.getObjectAttributeValue(target, "uuid"),
+                // getObjectVersion(target));
+                // if(!epc.readRels.containsKey(obj_pair)){
+                // epc.readRels.put(obj_pair, new ArrayList<>());
+                // }
+                // epc.readRels.get(obj_pair).addAll(rels.getValue().getRelationship());
 
-                for(Relationship r: rels.getValue().getRelationship()){
-                    if(EPCRelsRelationshipType.DestinationObject.getType() .compareToIgnoreCase(r.getType()) != 0
-                            && EPCRelsRelationshipType.SourceObject.getType().compareToIgnoreCase(r.getType()) != 0){
-                        if(!epc.additionalRels.containsKey(targId)){
+                for (Relationship r : rels.getValue().getRelationship()) {
+                    if (EPCRelsRelationshipType.DestinationObject.getType().compareToIgnoreCase(r.getType()) != 0
+                            && EPCRelsRelationshipType.SourceObject.getType().compareToIgnoreCase(r.getType()) != 0) {
+                        if (!epc.additionalRels.containsKey(targId)) {
                             epc.additionalRels.put(targId, new ArrayList<>());
                         }
                         epc.additionalRels.get(targId).add(r);
                     }
                 }
-            }else{
+            } else {
                 logger.error("Object " + rels.getKey() + " not found for rels");
-                for(String k: mapPathToObject.keySet()){
-                    logger.debug("\t" + k + " ==> " + mapPathToObject.containsKey(rels.getKey()) + "--" + mapPathToObject.get(rels.getKey()));
+                StringBuilder sb = new StringBuilder();
+                for (Relationship relationship : rels.getValue().getRelationship()) {
+                    String[] parts = relationship.getType().split("/");
+                    sb.append(parts[parts.length - 1]);
+                    sb.append(" => Target:");
+                    sb.append(relationship.getTarget());
+                }
+                logger.debug(sb.toString());
+                for (String k : mapPathToObject.keySet()) {
+                    logger.debug("\t" + k + " ==> " + mapPathToObject.containsKey(rels.getKey()) + "--"
+                            + mapPathToObject.get(rels.getKey()));
                 }
             }
         }
@@ -397,27 +480,31 @@ public class EPCFile implements EnergymlWorkspace{
         return epc;
     }
 
-//    public String findNumericalDataLocation(String uuid, String objectVersion){
-//        Object related = getObject(uuid, objectVersion);
-//        if(related != null){
-//            Relationships rels = computeRelations().get(related);
-//            for(Relationship rel : rels.getRelationship()){
-//                if(rel.getType().compareToIgnoreCase(EPCRelsRelationshipType.ExternalResource.label) == 0){
-//                    if(rel.getTarget().toLowerCase().endsWith(".h5") || rel.getTarget().toLowerCase().endsWith(".hdf5")){
-//                        return rel.getTarget();
-//                    }
-//                }
-//            }
-//            List<Object> references = new ArrayList<>();
-//            references.addAll(ObjectController.findAllAttributesFromName(related, "EpcExternalPartReference", true, false));
-//            references.addAll(ObjectController.findAllAttributesFromName(related, "HdfProxy", true, false));
-//
-//            for(Object ref: references){
-//
-//            }
-//        }
-//        return null;
-//    }
+    // public String findNumericalDataLocation(String uuid, String objectVersion){
+    // Object related = getObject(uuid, objectVersion);
+    // if(related != null){
+    // Relationships rels = computeRelations().get(related);
+    // for(Relationship rel : rels.getRelationship()){
+    // if(rel.getType().compareToIgnoreCase(EPCRelsRelationshipType.ExternalResource.label)
+    // == 0){
+    // if(rel.getTarget().toLowerCase().endsWith(".h5") ||
+    // rel.getTarget().toLowerCase().endsWith(".hdf5")){
+    // return rel.getTarget();
+    // }
+    // }
+    // }
+    // List<Object> references = new ArrayList<>();
+    // references.addAll(ObjectController.findAllAttributesFromName(related,
+    // "EpcExternalPartReference", true, false));
+    // references.addAll(ObjectController.findAllAttributesFromName(related,
+    // "HdfProxy", true, false));
+    //
+    // for(Object ref: references){
+    //
+    // }
+    // }
+    // return null;
+    // }
 
     /* --------------------------------------------------- */
 
@@ -433,9 +520,9 @@ public class EPCFile implements EnergymlWorkspace{
         return additionalRels;
     }
 
-//    public Map<Pair<String, String>, List<Relationship>> getReadRels() {
-//        return readRels;
-//    }
+    // public Map<Pair<String, String>, List<Relationship>> getReadRels() {
+    // return readRels;
+    // }
 
     public ExportVersion getVersion() {
         return version;
@@ -456,31 +543,33 @@ public class EPCFile implements EnergymlWorkspace{
         return null;
     }
 
-    public static String getUuid(Object obj){
+    public static String getUuid(Object obj) {
         return (String) ObjectController.getObjectAttributeValueRgx(obj, "uuid").get(0);
     }
 
-    public static String getSchemaVersion(Object obj){
+    public static String getSchemaVersion(Object obj) {
         return (String) ObjectController.getObjectAttributeValue(obj, "schemaVersion");
     }
 
-    public static String getObjectVersion(Object obj){
+    public static String getObjectVersion(Object obj) {
         try {
             return (String) ObjectController.getObjectAttributeValueRgx(obj, "objectVersion|versionString").get(0);
-        }catch (Exception e){
+        } catch (Exception e) {
             logger.error("@getObjectVersion {}", e);
         }
         return null;
-//        return (String) ObjectController.getObjectAttributeValue(obj, "objectVersion");
+        // return (String) ObjectController.getObjectAttributeValue(obj,
+        // "objectVersion");
     }
 
     /**
      * Generates an objet identifier as : 'OBJ_UUID.OBJ_VERSION'
      * If the object version is None, the result is 'OBJ_UUID.'
+     *
      * @param obj
      * @return
      */
-    public static String getIdentifier(Object obj){
+    public static String getIdentifier(Object obj) {
         String objVersion = getObjectVersion(obj);
         if (objVersion == null) {
             objVersion = "";
@@ -489,17 +578,17 @@ public class EPCFile implements EnergymlWorkspace{
         return getIdentifier(objUuid, objVersion);
     }
 
-    public static String getIdentifier(String uuid, String objVersion){
-        return uuid + "." + (objVersion != null ? objVersion: "");
+    public static String getIdentifier(String uuid, String objVersion) {
+        return uuid + "." + (objVersion != null ? objVersion : "");
     }
 
-    public static String getUuidFromIdentifier(String identifier){
+    public static String getUuidFromIdentifier(String identifier) {
         return identifier.substring(0, identifier.indexOf("."));
     }
 
-    public static String getObjVersionFromIdentifier(String identifier){
+    public static String getObjVersionFromIdentifier(String identifier) {
         String version = identifier.substring(identifier.indexOf(".") + 1);
-        if(!version.isEmpty())
+        if (!version.isEmpty())
             return version;
         return null;
     }
